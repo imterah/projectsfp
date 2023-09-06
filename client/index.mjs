@@ -1,5 +1,8 @@
 import process from "node:process";
 
+import { getRandomInt } from "./libs/getRandomInt.mjs";
+import { sha256 } from "./libs/sha256.mjs";
+
 import Datastore from "nedb-promises";
 import express from "express";
 import openpgp from "openpgp";
@@ -28,9 +31,21 @@ const usersDB = Datastore.create("./users.db");
 const sessionTokens = [
   {
     username: "example",
-    token: ""
+    token: "",
+    ip: "0.0.0.0"
   }
 ]
+
+async function findUserFromToken(token, ip) {
+  const foundTokenData = sessionTokens.find((i) => i.ip == ip && i.token == token);
+  if (!foundTokenData) return null;
+
+  const tokenData = await usersDB.find({
+    username: foundTokenData.token
+  });
+
+  return tokenData;
+}
 
 const app = express();
 app.use(express.json());
@@ -55,16 +70,60 @@ if (await usersDB.count() == 0 || process.env.INIT_CREATE_USER) {
 
   await usersDB.insertOne({
     username: process.env.INIT_USERNAME,
-    password: process.env.INIT_PASSWORD,
+    password: sha256(process.env.INIT_PASSWORD),
 
     isAdministrator: process.env.INIT_SHOULD_BE_REGULAR_USER ? false : true
   });
 }
 
-app.post("/api/v1/pair", async(req, res) => {
-  if (!req.body.url) {
+app.post("/api/v1/login", async(req, res) => {
+  if (!req.body.username || !req.body.password) {
     return res.status(400).send({
-      error: "Missing URL (in life there is road blox)"
+      error: "Missing username or password"
+    });
+  };
+  
+  const user = await usersDB.findOne({
+    username: req.body.username,
+    password: sha256(req.body.password)
+  });
+
+  if (!user) {
+    return res.status(403).send({
+      error: "User not found"
+    });
+  }
+
+  const jankToken = sha256(getRandomInt(100000, 999999));
+
+  sessionTokens.push({
+    username: req.body.username,
+    token: jankToken,
+    ip: req.ip
+  });
+
+  //return jankToken;
+  return res.send({
+    success: true,
+    token: jankToken
+  })
+})
+
+app.post("/api/v1/pair", async(req, res) => {
+  if (!req.body.url || !req.body.token) {
+    return res.status(400).send({
+      error: "Missing URL or token (in life there is road blox)"
+    });
+  }
+
+  const user = await findUserFromToken(req.body.token, req.ip);
+  if (!user) {
+    return res.status(403).send({
+      error: "User not found"
+    });
+  } else if (!user.isAdministrator) {
+    return res.status(403).send({
+      error: "User is not administrator"
     });
   }
 
