@@ -78,6 +78,11 @@ app.post("/api/v1/allowedToPair", (req, res) => {
 
 app.post("/api/v1/pair", async(req, res) => {
   const allowedToPair = validateIfIsAllowedToPair(req.ip);
+  if (!req.body.gpgPublicKey || !req.body.name || !req.body.email) {
+    return res.status(400).send({
+      error: "Missing public key, name, or email"
+    })
+  }
 
   if (!allowedToPair.allowed) {
     console.error("ERROR: Attempted pair request with IP '%s'. (rejected)", req.ip);
@@ -97,18 +102,12 @@ app.post("/api/v1/pair", async(req, res) => {
 
   console.log("IP '%s' passed all checks for signing up as a client.", req.ip);
 
-  if (!req.body.gpgPublicKey) {
-    return res.status(400).send({
-      error: "Missing public key"
-    })
-  }
-
   const { privateKey, publicKey, revocationCertificate } = await openpgp.generateKey({
     type: "ecc",
     curve: "curve25519",
     userIDs: [{ // TODO?
-      name: "Name Here",
-      email: "test@123.net"
+      name: req.body.name,
+      email: req.body.email
     }],
     passphrase: "", // TODO: figure out a way to implement passwords securely
     format: "armored"

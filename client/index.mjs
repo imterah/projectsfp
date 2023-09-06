@@ -149,15 +149,17 @@ app.post("/api/v1/pair", async(req, res) => {
     type: "ecc",
     curve: "curve25519",
     userIDs: [{ // TODO?
-      name: "Name Here",
-      email: "test@123.net"
+      name: `${user.username} [Client Key @ ProjectSFP]`,
+      email: `${user.username}@1dummy.greysoh.dev`
     }],
     passphrase: "", // TODO: figure out a way to implement passwords securely
     format: "armored"
   });
 
   const pairingData = await axios.post(req.body.url + "/api/v1/pair", {
-    gpgPublicKey: publicKey
+    gpgPublicKey: publicKey,
+    name: `${user.username} [Server Key @ ProjectSFP]`,
+    email: `${user.username}@1dummy.greysoh.dev`
   });
   
   await clientDB.insertOne({
