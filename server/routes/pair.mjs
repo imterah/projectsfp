@@ -105,9 +105,11 @@ export function init(db, config) {
       refID,
     });
 
+    const publicKeyEncrypted = await encrypt(publicKey, req.body.gpgPublicKey, "text");
+
     res.send({
       success: true,
-      publicKey,
+      publicKey: publicKeyEncrypted,
       refID,
     });
   });

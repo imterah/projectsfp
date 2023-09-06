@@ -41,4 +41,4 @@ app.get("/sfp", (req, res) => {
   });
 });
 
-app.listen(8080, () => console.log("\nListening on ::8080"));
+app.listen(config.ports.http, () => console.log("\nListening on ::%s", config.ports.http));

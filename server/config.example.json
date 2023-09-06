@@ -2,5 +2,12 @@
   "blacklistedIPs": [],
   "whitelistedIPs": [],
   "forceAcceptIPs": [],
-  "blockNewIPsAutomatically": true
+  "blockNewIPsAutomatically": true,
+
+  "ports": {
+    "websocket": 1234,
+    "tcp": 1235,
+    "udp": 1236,
+    "http": 8000
+  }
 }
