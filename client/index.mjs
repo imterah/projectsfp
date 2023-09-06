@@ -40,8 +40,8 @@ async function findUserFromToken(token, ip) {
   const foundTokenData = sessionTokens.find((i) => i.ip == ip && i.token == token);
   if (!foundTokenData) return null;
 
-  const tokenData = await usersDB.find({
-    username: foundTokenData.token
+  const tokenData = await usersDB.findOne({
+    username: foundTokenData.username
   });
 
   return tokenData;
@@ -112,7 +112,7 @@ app.post("/api/v1/login", async(req, res) => {
 app.post("/api/v1/pair", async(req, res) => {
   if (!req.body.url || !req.body.token) {
     return res.status(400).send({
-      error: "Missing URL or token (in life there is road blox)"
+      error: "Missing URL or token"
     });
   }
 
@@ -125,6 +125,17 @@ app.post("/api/v1/pair", async(req, res) => {
     return res.status(403).send({
       error: "User is not administrator"
     });
+  }
+
+  const validateIfAlreadyPaired = await clientDB.findOne({
+    url: req.body.url
+  });
+
+  if (validateIfAlreadyPaired) {
+    // TOOD: Find better HTTP status code
+    return res.status(403).send({
+      error: "Server is already paired"
+    })
   }
 
   const validateIfAllowedToPair = await axios.post(req.body.url + "/api/v1/allowedToPair");
