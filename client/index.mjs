@@ -1,12 +1,12 @@
 import process from "node:process";
 
-import { getRandomInt } from "./libs/getRandomInt.mjs";
 import { sha256 } from "./libs/sha256.mjs";
+
+import * as login from "./routes/login.mjs";
+import * as pair from "./routes/pair.mjs";
 
 import Datastore from "nedb-promises";
 import express from "express";
-import openpgp from "openpgp";
-import axios from "axios";
 
 console.log(`
  /$$$$$$$                                               /$$      /$$$$$$  /$$$$$$$$ /$$$$$$$ 
@@ -36,19 +36,11 @@ const sessionTokens = [
   }
 ]
 
-async function findUserFromToken(token, ip) {
-  const foundTokenData = sessionTokens.find((i) => i.ip == ip && i.token == token);
-  if (!foundTokenData) return null;
-
-  const tokenData = await usersDB.findOne({
-    username: foundTokenData.username
-  });
-
-  return tokenData;
-}
-
 const app = express();
 app.use(express.json());
+
+app.use(login.init(usersDB, clientDB, portForwardDB, sessionTokens));
+app.use(pair.init(usersDB, clientDB, portForwardDB, sessionTokens));
 
 if (await usersDB.count() == 0 || process.env.INIT_CREATE_USER) {
   // Create a new user
@@ -75,105 +67,5 @@ if (await usersDB.count() == 0 || process.env.INIT_CREATE_USER) {
     isAdministrator: process.env.INIT_SHOULD_BE_REGULAR_USER ? false : true
   });
 }
-
-app.post("/api/v1/login", async(req, res) => {
-  if (!req.body.username || !req.body.password) {
-    return res.status(400).send({
-      error: "Missing username or password"
-    });
-  };
-  
-  const user = await usersDB.findOne({
-    username: req.body.username,
-    password: sha256(req.body.password)
-  });
-
-  if (!user) {
-    return res.status(403).send({
-      error: "User not found"
-    });
-  }
-
-  const jankToken = sha256(getRandomInt(100000, 999999));
-
-  sessionTokens.push({
-    username: req.body.username,
-    token: jankToken,
-    ip: req.ip
-  });
-
-  //return jankToken;
-  return res.send({
-    success: true,
-    token: jankToken
-  })
-})
-
-app.post("/api/v1/pair", async(req, res) => {
-  if (!req.body.url || !req.body.token) {
-    return res.status(400).send({
-      error: "Missing URL or token"
-    });
-  }
-
-  const user = await findUserFromToken(req.body.token, req.ip);
-  if (!user) {
-    return res.status(403).send({
-      error: "User not found"
-    });
-  } else if (!user.isAdministrator) {
-    return res.status(403).send({
-      error: "User is not administrator"
-    });
-  }
-
-  const validateIfAlreadyPaired = await clientDB.findOne({
-    url: req.body.url
-  });
-
-  if (validateIfAlreadyPaired) {
-    // TOOD: Find better HTTP status code
-    return res.status(403).send({
-      error: "Server is already paired"
-    })
-  }
-
-  const validateIfAllowedToPair = await axios.post(req.body.url + "/api/v1/allowedToPair");
-  if (!validateIfAllowedToPair.data.allowed) {
-    return res.status(403).send({
-      error: "Server returned not allowed to pair"
-    });
-  };
-
-  const { privateKey, publicKey, revocationCertificate } = await openpgp.generateKey({
-    type: "ecc",
-    curve: "curve25519",
-    userIDs: [{ // TODO?
-      name: `${user.username} [Client Key @ ProjectSFP]`,
-      email: `${user.username}@1dummy.greysoh.dev`
-    }],
-    passphrase: "", // TODO: figure out a way to implement passwords securely
-    format: "armored"
-  });
-
-  const pairingData = await axios.post(req.body.url + "/api/v1/pair", {
-    gpgPublicKey: publicKey,
-    name: `${user.username} [Server Key @ ProjectSFP]`,
-    email: `${user.username}@1dummy.greysoh.dev`
-  });
-  
-  await clientDB.insertOne({
-    serverPublicKey: pairingData.publicKey,
-    selfPublicKey: publicKey,
-    selfPrivateKey: privateKey,
-    selfRevokeCert: revocationCertificate,
-    refID: pairingData.refID,
-    url: req.body.url
-  });
-
-  res.send({
-    success: true
-  })
-});
 
 app.listen(8000, () => console.log("\nListening on ::8000"));
