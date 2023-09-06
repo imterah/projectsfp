@@ -1,0 +1,6 @@
+{
+  "blacklistedIPs": [],
+  "whitelistedIPs": [],
+  "forceAcceptIPs": [],
+  "blockNewIPsAutomatically": true
+}
