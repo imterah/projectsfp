@@ -1,4 +1,5 @@
 import { getRandomInt } from "../libs/getRandomInt.mjs";
+import { EasyEncrypt } from "../libs/encryption.mjs";
 
 import promptSync from "prompt-sync";
 import express from "express";
@@ -105,7 +106,11 @@ export function init(db, config) {
       refID,
     });
 
-    const publicKeyEncrypted = await encrypt(publicKey, req.body.gpgPublicKey, "text");
+    // Initialize encryption
+    const encryption = new EasyEncrypt(req.body.gpgPublicKey);
+    await encryption.init();
+
+    const publicKeyEncrypted = await encryption.encrypt(publicKey, "text");
 
     res.send({
       success: true,

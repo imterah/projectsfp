@@ -1,86 +1,75 @@
 import openpgp from "openpgp";
 
-const encoder = new TextEncoder();
-
-export async function encrypt(rawMsg, publicKeyArmored, privateKeyVerifcationArmored, passphrase = "", format = "binary") {
-  const publicKey = await openpgp.readKey({
-    armoredKey: publicKeyArmored
-  });
-
-  let privateKeyOptional;
-  if (privateKeyVerifcationArmored) {
-    privateKeyOptional = await openpgp.readKey({
-      armoredKey: privateKeyVerifcationArmored,
-      passphrase
-    });
+export class EasyEncrypt {
+  constructor(publicKeyArmored, privateKeyArmored, privateKeyPassphrase) {
+    this.publicKeyArmored = publicKeyArmored;
+    this.privateKeyArmored = privateKeyArmored;
+    this.privateKeyPassphrase = privateKeyPassphrase;
   }
 
-  let msg;
-  if (format == "binary") {
-    if (typeof rawMsg == "number" || typeof rawMsg == "string") {
-      msg = encoder.encode(`${rawMsg}`);
-    } else {
-      msg = rawMsg;
+  async init() {
+    if (this.publicKeyArmored) {
+      this.publicKey = await openpgp.readKey({
+        armoredKey: this.publicKeyArmored,
+      });
     }
-  } else {
-    msg = rawMsg;
+
+    if (this.privateKeyArmored) {
+      this.privateKey = await openpgp.readKey({
+        armoredKey: this.privateKeyArmored,
+        passphrase: this.privateKeyPassphrase,
+      });
+    }
   }
 
-  const opts = {};
-  opts[format] = msg;
+  async encrypt(msg, format = "binary") {
+    const opts = {};
+    opts[format] = msg;
 
-  const message = await openpgp.createMessage(opts);
-  const encrypted = await openpgp.encrypt({
-    message,
-    encryptionKeys: publicKey,
-    signingKeys: privateKeyOptional
-  });
+    const message = await openpgp.createMessage(opts);
+    const encrypted = await openpgp.encrypt({
+      message,
+      encryptionKeys: this.publicKey,
+      signingKeys: this.privateKey,
+    });
 
-  return encrypted;
-}
-
-export async function decrypt(msg, privateKeyArmored, publicKeyVerifcationArmored, passphrase = "", format = "binary") {
-  const privateKey = await openpgp.readKey({
-    armoredKey: privateKeyArmored,
-    passphrase
-  });
-
-  const publicKey = await openpgp.readKey({
-    armoredKey: publicKeyVerifcationArmored
-  });
-
-  const opts = {};
-  if (format == "binary") {
-    opts["binaryMessage"] = msg;
-  } else {
-    opts["armoredMessage"] = msg;
+    return encrypted;
   }
 
-  const encryptedMessage = await openpgp.readMessage({
-    binaryMessage: msg
-  });
+  async decrypt(msg, format = "binary") {
+    const opts = {};
+    if (format == "binary") {
+      opts["binaryMessage"] = msg;
+    } else {
+      opts["armoredMessage"] = msg;
+    }
 
-  const { data: decrypted, signatures } = await openpgp.decrypt({
-    encryptionKeys: privateKey,
-    verificationKeys: publicKey,
-    message: encryptedMessage
-  });
+    const encryptedMessage = await openpgp.readMessage({
+      binaryMessage: msg,
+    });
 
-  if (publicKey) {
-    try {
-      await signatures[0].verified;
-    } catch (e) {
-      console.error("Could not verify signature!", e.message, "\nTrace:");
-      console.error(trace);
-      
-      if (format == "binary") {
-        const uintDummy = new Uint8Array(1);
-        return uintDummy;
-      } else {
-        return "";
+    const { data: decrypted, signatures } = await openpgp.decrypt({
+      encryptionKeys: this.privateKey,
+      verificationKeys: this.publicKey,
+      message: encryptedMessage,
+    });
+
+    if (this.publicKey) {
+      try {
+        await signatures[0].verified;
+      } catch (e) {
+        console.error("Could not verify signature!", e.message, "\nTrace:");
+        console.error(trace);
+
+        if (format == "binary") {
+          const uintDummy = new Uint8Array(1);
+          return uintDummy;
+        } else {
+          return "";
+        }
       }
     }
-  }
 
-  return decrypted;
-} 
+    return decrypted;
+  }
+}

@@ -1,4 +1,4 @@
-import { getRandomInt } from "../libs/getRandomInt.mjs";
+import { EasyEncrypt } from "../libs/encryption.mjs";
 
 import express from "express";
 import openpgp from "openpgp";
@@ -70,13 +70,17 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
       name: `${user.username} [Server Key @ ProjectSFP]`,
       email: `${user.username}@1dummy.greysoh.dev`
     });
+
+    // Decrypt the servers public key without verification. Some could say I'm overreacting, but it's not that much work, to be honest.
+    const encryption = new EasyEncrypt(null, privateKey, "");
+    await encryption.init();
     
     await clientDB.insertOne({
-      serverPublicKey: pairingData.publicKey,
+      serverPublicKey: await encryption.decrypt(pairingData.data.publicKey, "text"),
       selfPublicKey: publicKey,
       selfPrivateKey: privateKey,
       selfRevokeCert: revocationCertificate,
-      refID: pairingData.refID,
+      refID: pairingData.data.refID,
       url: req.body.url
     });
   
