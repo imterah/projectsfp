@@ -28,6 +28,9 @@ export async function main(config, db) {
 
         return hasSpecifiedReason = true;
       }
+
+      const decryptedMessage = await ws.encryption.decrypt(msg);
+      
     });
   });
 }
