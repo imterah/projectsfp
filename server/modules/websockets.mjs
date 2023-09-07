@@ -1,10 +1,6 @@
-import { encrypt, decrypt } from "../libs/encryption.mjs";
+import { EasyEncrypt } from "../libs/encryption.mjs";
 
-import * as b64array from "base64-arraybuffer";
 import { WebSocketServer } from "ws";
-
-const { encode } = new TextEncoder();
-const { decode } = new TextDecoder();
 
 export async function main(config, db) {
   const wss = new WebSocketServer({
@@ -24,10 +20,13 @@ export async function main(config, db) {
         if (!dbSearch) return ws.close();
 
         ws.keyData = dbSearch;
-        const decryptedChallenge = await decrypt(msgSplit[2], dbSearch.selfPrivateKey);
-        const decodedString = decode(decryptedChallenge);        
+        ws.encryption = new EasyEncrypt(dbSearch.userPublicKey, dbSearch.selfPrivateKey, "");
+        await ws.encryption.init();
 
-        if (decodedString != "CHALLENGE") return ws.close();
+        const decryptedChallenge = await ws.encryption.decrypt(atob(msgSplit[2]), "text"); 
+        if (decryptedChallenge != "CHALLENGE") return ws.close();
+
+        return hasSpecifiedReason = true;
       }
     });
   });
