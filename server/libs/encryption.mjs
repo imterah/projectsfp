@@ -15,10 +15,15 @@ export class EasyEncrypt {
     }
 
     if (this.privateKeyArmored) {
-      this.privateKey = await openpgp.readKey({
-        armoredKey: this.privateKeyArmored,
-        passphrase: this.privateKeyPassphrase,
-      });
+      if (this.privateKeyPassphrase == "") {
+        // Top notch security @ fort knox.
+        this.privateKey = await openpgp.readPrivateKey({ armoredKey: this.privateKeyArmored });
+      } else {
+        this.privateKey = await openpgp.decryptKey({
+          privateKey: await openpgp.readPrivateKey({ armoredKey: this.privateKeyArmored }),
+          passphrase: this.privateKeyPassphrase,
+        });
+      }
     }
   }
 
@@ -44,12 +49,10 @@ export class EasyEncrypt {
       opts["armoredMessage"] = msg;
     }
 
-    const encryptedMessage = await openpgp.readMessage({
-      binaryMessage: msg,
-    });
+    const encryptedMessage = await openpgp.readMessage(opts);
 
     const { data: decrypted, signatures } = await openpgp.decrypt({
-      encryptionKeys: this.privateKey,
+      decryptionKeys: this.privateKey,
       verificationKeys: this.publicKey,
       message: encryptedMessage,
     });

@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import { getRandomInt } from "./libs/getRandomInt.mjs";
+import * as ws from "./modules/websockets.mjs";
 import * as pair from "./routes/pair.mjs";
 
 import Datastore from "nedb-promises";
@@ -22,7 +22,7 @@ console.log(`
                         \\______/                                                             
 
 ProjectSFP - Easily forward ports over the network securely.
-You are running ProjectSFP Server, intended to be the network forwarding the ports.`);
+You are running ProjectSFP Server, intended to be the network forwarding the ports.\n`);
 
 const configRaw = await readFile("./config.json", "utf-8").catch(() => {
   throw new Error("Failed to read config file. Does it exist?");
@@ -41,4 +41,12 @@ app.get("/sfp", (req, res) => {
   });
 });
 
-app.listen(config.ports.http, () => console.log("\nListening on ::%s", config.ports.http));
+app.get("/api/v1/ports", (req, res) => {
+  res.send({
+    success: true,
+    ports: config.ports
+  })
+})
+
+app.listen(config.ports.http, () => console.log("Listening on ::%s", config.ports.http));
+ws.main(config, db);
