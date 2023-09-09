@@ -1,3 +1,5 @@
+import { strict as assert } from "node:assert";
+
 import openpgp from "openpgp";
 
 export class EasyEncrypt {
@@ -31,12 +33,26 @@ export class EasyEncrypt {
     const opts = {};
     opts[format] = msg;
 
-    const message = await openpgp.createMessage(opts);
+    if (format == "binary" && !(msg instanceof Uint8Array)) {
+      throw new Error("Requested binary output with non-binary input");
+    }
+
+    const message = await openpgp.createMessage(opts).catch((e) => {
+      throw new Error("Failed to read message")
+    });
+
     const encrypted = await openpgp.encrypt({
       message,
+      format: format == "binary" ? "binary" : undefined, // Get real
       encryptionKeys: this.publicKey,
-      signingKeys: this.privateKey,
+      signingKeys: this.privateKey
+    }).catch((e) => {
+      throw new Error("Failed to encrypt message")
     });
+
+    if (format == "binary") {
+      assert.ok(encrypted instanceof Uint8Array, "Binary format is NOT binary (in task encryption)");
+    }
 
     return encrypted;
   }
@@ -47,14 +63,19 @@ export class EasyEncrypt {
       opts["binaryMessage"] = msg;
     } else {
       opts["armoredMessage"] = msg;
-    }
+    }    
 
-    const encryptedMessage = await openpgp.readMessage(opts);
+    const encryptedMessage = await openpgp.readMessage(opts).catch((e) => {
+      throw new Error("Failed to read message")
+    });
 
     const { data: decrypted, signatures } = await openpgp.decrypt({
       decryptionKeys: this.privateKey,
       verificationKeys: this.publicKey,
       message: encryptedMessage,
+      format: format == "binary" ? "binary" : undefined, // Get real
+    }).catch((e) => {
+      throw new Error("Failed to decrypt message")
     });
 
     if (this.publicKey) {
@@ -73,6 +94,10 @@ export class EasyEncrypt {
       }
     }
 
+    if (format == "binary") {
+      assert.ok(decrypted instanceof Uint8Array, "Binary format is NOT binary (in task decryption)");
+    }
+    
     return decrypted;
   }
 }

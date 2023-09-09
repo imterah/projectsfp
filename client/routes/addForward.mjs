@@ -15,10 +15,16 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
   }
 
   app.post("/api/v1/add", async(req, res) => {
-    if (!req.body.port || !req.body.token) {
+    if (!req.body.port || !req.body.token || !req.body.protocol) {
       return res.status(400).send({
-        error: "Missing port or token"
+        error: "Missing port, token, or protocol (TCP/UDP)"
       });
+    }
+
+    if (req.body.protocol != "TCP" && req.body.protocol != "UDP") {
+      return res.status(400).send({
+        error: "Protocol invalid (must be TCP oder UDP)"
+      })
     }
 
     const user = await findUserFromToken(req.body.token, req.ip);
@@ -48,7 +54,8 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
     const validateIfAlreadyPorted = await portForwardDB.findOne({
       refID: req.body.id ?? 0,
       sourcePort: req.body.port,
-      destPort: req.body.destPort ?? req.body.port
+      destPort: req.body.destPort ?? req.body.port,
+      protocol: req.body.protocol
     });
 
     if (validateIfAlreadyPorted) {
@@ -60,7 +67,8 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
     await portForwardDB.insertOne({
       refID: req.body.id ?? 0,
       sourcePort: req.body.port,
-      destPort: req.body.destPort ?? req.body.port
+      destPort: req.body.destPort ?? req.body.port,
+      protocol: req.body.protocol
     });
 
     return res.send({

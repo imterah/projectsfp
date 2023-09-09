@@ -1,10 +1,10 @@
 import { EasyEncrypt } from "../libs/encryption.mjs";
+import { connectForward } from "./tcpClient.mjs";
 
 import { WebSocket } from "ws";
 import axios from "axios";
 
 export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, portForwardDB, sessionTokens) {
-  console.log(typeof clientID, clientID);
   const clientFound = await clientDB.findOne({
     refID: parseInt(clientID)
   });
@@ -26,7 +26,7 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
     ws.send(`EXPLAIN ${clientID} ${encryptedChallenge}`);
     
     ws.addEventListener("message", async(msg) => {
-      const decryptedMsg = await ws.encryption.decrypt(msg);
+      const decryptedMsg = await ws.encryption.decrypt(atob(msg.data), "text");
       const msgString = decryptedMsg.toString();
 
       if (msgString == "SUCCESS") {
@@ -34,8 +34,40 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
         for (const port of ports) {
           ws.send(btoa(await ws.encryption.encrypt(JSON.stringify({
             type: "listenNotifRequest",
-            port: port.destPort
-          }))));
+            port: port.destPort,
+            protocol: port.protocol
+          }), "text")));
+        }
+      } else if (msgString.startsWith("{")) {
+        const msg = JSON.parse(msgString);
+
+        switch (msg.type) {
+          case "connection": {
+            if (msg.protocol == "TCP") {
+              // Attempt to query the main ID first
+              let msgConnect = await portForwardDB.findOne({
+                destPort: msg.port,
+                refID: parseInt(clientID)
+              });
+
+              if (!msgConnect) {
+                // Then query generic after that
+                msgConnect = await portForwardDB.findOne({
+                  destPort: msg.port,
+                  refID: 0
+                });
+
+                if (!msgConnect) return console.error("Error: Failed to find port");
+              }
+
+              // FIXME: This is really bad
+              // Ok I lied this is somewhat fine
+              const url = new URL(clientIPAddr);
+              const ip = url.host;
+
+              connectForward(parseInt(clientID), msgConnect.sourcePort, msg.socketID, ip.split(":")[0], portsRes.tcp, clientDB);
+            } else if (msg.protocol == "UDP") return console.error("Not implemented [UDP]");
+          }
         }
       }
     });

@@ -90,7 +90,6 @@ for (const portItem of await portForwardDB.find({})) {
 
 for (const poolPartyItemKey of Object.keys(portPoolPartyGen)) {
   if (poolPartyItemKey == "0" || poolPartyItemKey == undefined) continue;
-  console.log("AAS", poolPartyItemKey);
 
   const poolPartyItem = portPoolPartyGen[poolPartyItemKey];
   const totalPortsToForward = [...portPoolPartyGen["0"], ...poolPartyItem];
@@ -103,4 +102,4 @@ for (const poolPartyItemKey of Object.keys(portPoolPartyGen)) {
   ws.main(serverToConnectToData.url, poolPartyItemKey, totalPortsToForward, usersDB, clientDB, portForwardDB, sessionTokens);
 }
 
-app.listen(8000, () => console.log("\nListening on ::8000"));
+app.listen(8000, () => console.log("Listening on ::8000"));

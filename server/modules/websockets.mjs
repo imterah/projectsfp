@@ -1,4 +1,7 @@
+import { strict as assert } from "node:assert";
+
 import { EasyEncrypt } from "../libs/encryption.mjs";
+import * as tcp from "../modules/tcp.mjs";
 
 import { WebSocketServer } from "ws";
 
@@ -30,15 +33,24 @@ export async function main(config, db) {
         if (decryptedChallenge != "CHALLENGE") return ws.close();
         
         ws.hasSpecifiedReason = true;
+        ws.send(btoa(await ws.encryption.encrypt("SUCCESS", "text")));
         return;
       }
 
-      const decryptedMessage = await ws.encryption.decrypt(atob(msg.data));
+      const decryptedMessage = await ws.encryption.decrypt(atob(msg.data), "text");
       const msgData = JSON.parse(decryptedMessage);
 
       switch (msgData.type) {
         case "listenNotifRequest": {
-          // TODO
+          assert.equal(msgData.protocol, "TCP", "Unsupported protocol");
+          console.log("Bringing up port '%s' for protocol '%s'", msgData.port, msgData.protocol);
+          
+          tcp.setUpConn(ws.keyData.refID, async(socketID) => ws.send(btoa(await ws.encryption.encrypt(JSON.stringify({
+            type: "connection",
+            protocol: msgData.protocol,
+            socketID: socketID,
+            port: msgData.port
+          }), "text"))), msgData.port, config, db);
           break;
         }
       }
