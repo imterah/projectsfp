@@ -5,7 +5,7 @@ import { EasyEncrypt } from "../libs/encryption.mjs";
 
 const decoder = new TextDecoder();
 
-export async function connectForward(refID, tcpLocalPort, serverSocketID, serverIP, serverPort, clientDB) {
+export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSocketID, serverIP, serverPort, clientDB) {
   const socket = new Socket();
   const socketClient = new Socket();
 
@@ -85,7 +85,5 @@ export async function connectForward(refID, tcpLocalPort, serverSocketID, server
   });
   
   socket.connect(serverPort, serverIP);
-
-  console.log("FIXME: IP isn't defined.");
-  socketClient.connect(tcpLocalPort, "127.0.0.1");
+  socketClient.connect(tcpLocalPort, tcpLocalIP);
 }

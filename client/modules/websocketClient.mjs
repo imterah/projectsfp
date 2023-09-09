@@ -65,7 +65,7 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
               const url = new URL(clientIPAddr);
               const ip = url.host;
 
-              connectForward(parseInt(clientID), msgConnect.sourcePort, msg.socketID, ip.split(":")[0], portsRes.tcp, clientDB);
+              connectForward(parseInt(clientID), msgConnect.sourcePort, msgConnect.ip, msg.socketID, ip.split(":")[0], portsRes.tcp, clientDB);
             } else if (msg.protocol == "UDP") return console.error("Not implemented [UDP]");
           }
         }

@@ -55,7 +55,8 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
       refID: req.body.id ?? 0,
       sourcePort: req.body.port,
       destPort: req.body.destPort ?? req.body.port,
-      protocol: req.body.protocol
+      protocol: req.body.protocol,
+      ip: req.body.ip ?? "127.0.0.1"
     });
 
     if (validateIfAlreadyPorted) {
@@ -68,7 +69,8 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
       refID: req.body.id ?? 0,
       sourcePort: req.body.port,
       destPort: req.body.destPort ?? req.body.port,
-      protocol: req.body.protocol
+      protocol: req.body.protocol,
+      ip: req.body.ip ?? "127.0.0.1"
     });
 
     return res.send({

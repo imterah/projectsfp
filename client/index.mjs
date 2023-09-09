@@ -90,9 +90,10 @@ for (const portItem of await portForwardDB.find({})) {
 
 for (const poolPartyItemKey of Object.keys(portPoolPartyGen)) {
   if (poolPartyItemKey == "0" || poolPartyItemKey == undefined) continue;
+  const allPorts = portPoolPartyGen["0"] ?? [];
 
   const poolPartyItem = portPoolPartyGen[poolPartyItemKey];
-  const totalPortsToForward = [...portPoolPartyGen["0"], ...poolPartyItem];
+  const totalPortsToForward = [...allPorts, ...poolPartyItem];
 
   const serverToConnectToData = await clientDB.findOne({
     refID: parseInt(poolPartyItemKey)
