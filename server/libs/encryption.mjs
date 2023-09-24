@@ -7,9 +7,13 @@ export class EasyEncrypt {
     this.publicKeyArmored = publicKeyArmored;
     this.privateKeyArmored = privateKeyArmored;
     this.privateKeyPassphrase = privateKeyPassphrase;
+
+    this.hasInit = false;
   }
 
   async init() {
+    if (this.hasInit) throw new Error("Already initialized");
+
     if (this.publicKeyArmored) {
       this.publicKey = await openpgp.readKey({
         armoredKey: this.publicKeyArmored,
@@ -30,6 +34,8 @@ export class EasyEncrypt {
   }
 
   async encrypt(msg, format = "binary") {
+    if (!this.hasInit) await this.init();
+
     const opts = {};
     opts[format] = msg;
 
@@ -47,6 +53,7 @@ export class EasyEncrypt {
       encryptionKeys: this.publicKey,
       signingKeys: this.privateKey
     }).catch((e) => {
+      console.log(e);
       throw new Error("Failed to encrypt message")
     });
 
@@ -58,6 +65,8 @@ export class EasyEncrypt {
   }
 
   async decrypt(msg, format = "binary") {
+    if (!this.hasInit) await this.init();
+    
     const opts = {};
     if (format == "binary") {
       opts["binaryMessage"] = msg;
