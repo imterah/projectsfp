@@ -88,9 +88,10 @@ for (const portItem of await portForwardDB.find({})) {
   portPoolPartyGen[portItem.refID].push(portItem);
 }
 
+const allPorts = portPoolPartyGen["0"] ?? [];
+
 for (const poolPartyItemKey of Object.keys(portPoolPartyGen)) {
   if (poolPartyItemKey == "0" || poolPartyItemKey == undefined) continue;
-  const allPorts = portPoolPartyGen["0"] ?? [];
 
   const poolPartyItem = portPoolPartyGen[poolPartyItemKey];
   const totalPortsToForward = [...allPorts, ...poolPartyItem];
