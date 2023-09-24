@@ -1,4 +1,5 @@
 import { EasyEncrypt } from "../libs/encryption.mjs";
+import * as ws from "../modules/websocketClient.mjs";
 
 import express from "express";
 import openpgp from "openpgp";
@@ -86,7 +87,25 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
   
     res.send({
       success: true
-    })
+    });
+
+    // Stolen from index.mjs
+    const portPoolPartyGen = {};
+
+    for (const clientItem of await clientDB.find({})) {
+      if (!clientItem.refID) continue;
+    
+      portPoolPartyGen[clientItem.refID] = [];
+    }
+    
+    for (const portItem of await portForwardDB.find({})) {
+      if (!portPoolPartyGen[portItem.refID]) portPoolPartyGen[portItem.refID] = [];
+      
+      portPoolPartyGen[portItem.refID].push(portItem);
+    }
+
+    const allPorts = portPoolPartyGen["0"] ?? [];
+    ws.main(req.body.url, pairingData.data.refID, allPorts, usersDB, clientDB, portForwardDB, sessionTokens);
   });
 
   return app;
