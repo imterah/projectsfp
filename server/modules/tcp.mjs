@@ -1,6 +1,7 @@
 import net from "node:net";
-import { getRandomInt } from "../libs/getRandomInt.mjs";
 
+import { getRandomInt } from "../libs/getRandomInt.mjs";
+import { Chunkasaurus } from "../libs/Chunkasaurus.mjs";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 
 const decoder = new TextDecoder();
@@ -71,21 +72,21 @@ export function main(config, db) {
         socket.ready = true;
         
         socket.write(await socket.encryption.encrypt(encoder.encode("SUCCESS")));
+        socket.chunkasarus = new Chunkasaurus();
         console.log("Server validated");
         return;
       }
 
-      // Attempt to decrypt the message
-      const dataDecrypted = await socket.encryption.decrypt(data).catch((e) => {
-        console.error(e);
-        console.log("NEVER FORGOR");
-        return;
-      });
-      if (!dataDecrypted) return;
-      
-      console.log("decrypted data", dataDecrypted);
+      const dataUnchunked = socket.chunkasarus.dechunk(data);
+      if (dataUnchunked) {
+        console.log("Unchunked data recv!")
+        // Attempt to decrypt the message
+        const dataDecrypted = await socket.encryption.decrypt(dataUnchunked).catch((e) => {
+          console.error(e);
+        });
 
-      socket.msgGenObject.sendFunc(dataDecrypted);
+        socket.msgGenObject.sendFunc(dataDecrypted);
+      }
     });
   });
 

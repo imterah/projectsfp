@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import { Socket } from "node:net";
 
+import { Chunkasaurus } from "../libs/Chunkasaurus.mjs";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 
 const decoder = new TextDecoder();
@@ -20,6 +21,8 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
 
   const clientConnBuffer = [];
   const serverConnBuffer = [];
+
+  const chunkasarus = new Chunkasaurus();
 
   const encryption = new EasyEncrypt(clientFound.serverPublicKey, clientFound.selfPrivateKey, "");
   await encryption.init();
@@ -73,11 +76,13 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
 
           assert.equal(serverConnBuffer.length, 0, "Server connection buffer is not empty");
         }
- 
-        console.log(dataEncrypted);
 
-        if (!isServerConnReady) serverConnBuffer.push(dataEncrypted); 
-        else socket.write(dataEncrypted);
+        const chunkedData = chunkasarus.chunk(dataEncrypted);
+
+        for (const chunkedItem of chunkedData) {
+          if (!isServerConnReady) serverConnBuffer.push(chunkedItem); 
+          else socket.write(chunkedItem);
+        }
       });
 
       isClientConnReady = true;
