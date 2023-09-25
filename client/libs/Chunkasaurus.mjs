@@ -146,7 +146,7 @@ export class Chunkasaurus {
 
       // Rebuild a temp array with our more exact information
       // FIXME: I don't really like ` - iterationCnt`. Maybe look into this?
-      const dataPacket = new Uint8Array(remainingData + 8 - iterationCnt);
+      const dataPacket = new Uint8Array((remainingData + 8 - iterationCnt) > 0 ? (remainingData + 8 - iterationCnt) : 0);
       dataPacket[0] = packetTypes.HEADER_0;
       dataPacket[1] = packetTypes.HEADER_1;
       dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
@@ -157,7 +157,16 @@ export class Chunkasaurus {
       dataPacket[slicedData.length+6] = packetTypes.PACKET_DELIMITER_2;
       dataPacket[slicedData.length+7] = packetTypes.PACKET_DELIMITER_3;
 
-      dataPacket.set(slicedData, 4);
+      try {
+        dataPacket.set(slicedData, 4);
+      } catch (e) {
+        console.error("This packet is hosed. FIXME!!"); // FIXME
+        
+        hewwoBuffer[2] = packetTypes.PACKET_END;
+        packets.push(Uint8Array.from(hewwoBuffer));
+
+        return packets;
+      }
       packets.push(Uint8Array.from(dataPacket));
     }
 
@@ -176,12 +185,16 @@ export class Chunkasaurus {
       packetTypes.PACKET_DELIMITER_3
     ]);
 
+    console.log(splitData.length, splitData);
+
+    let returnData;
+    
     for (const data of splitData) {
       if (data[0] != packetTypes.HEADER_0 || data[1] != packetTypes.HEADER_1) continue;
 
       if (data[2] == packetTypes.PACKET_BEGIN) {
         this.chunkedPackets[data[3]] = [];
-        return;
+        continue;
       } else if (data[2] == packetTypes.PACKET_TRANSMISSION) {
         // Attempt to fetch the current packet pheonix entry
         const packetPheonixEntryIndex = Object.keys(this.chunkedPackets).find(
@@ -193,7 +206,7 @@ export class Chunkasaurus {
             "WARNING: Invalid packet pheonix ID (recieved %s)",
             data[3]
           );
-          return;
+          continue;
         }
 
         const packetPheonixEntry = this.chunkedPackets[packetPheonixEntryIndex];
@@ -209,7 +222,7 @@ export class Chunkasaurus {
           console.error(
             "WARNING: Invalid packet pheonix ID recieved (not allocated using packet ID 0x00)"
           );
-          return;
+          continue;
         }
 
         const packetPheonixEntry = this.chunkedPackets[packetPheonixEntryIndex];
@@ -229,8 +242,11 @@ export class Chunkasaurus {
         }
 
         this.chunkedPackets[packetPheonixEntryIndex] = undefined;
-        return packetReconstructed;
+        returnData = packetReconstructed;
+        continue;
       }
     }
+
+    return returnData;
   }
 }

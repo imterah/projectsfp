@@ -79,13 +79,12 @@ export function main(config, db) {
 
       const dataUnchunked = socket.chunkasarus.dechunk(data);
       if (dataUnchunked) {
-        console.log("Unchunked data recv!")
         // Attempt to decrypt the message
         const dataDecrypted = await socket.encryption.decrypt(dataUnchunked).catch((e) => {
           console.error(e);
         });
 
-        socket.msgGenObject.sendFunc(dataDecrypted);
+        if (typeof dataDecrypted != "undefined") socket.msgGenObject.sendFunc(dataDecrypted);
       }
     });
   });
