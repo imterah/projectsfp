@@ -34,17 +34,17 @@ function splitUint8Array(uint8Array, delimiters) {
 }
 
 const packetTypes = {
-  HEADER_0: 0xfa, 
-  HEADER_1: 0xf0,
+  HEADER_0: 0xFA, 
+  HEADER_1: 0xF0,
 
   PACKET_BEGIN: 0x00,
   PACKET_END: 0x01,
   PACKET_TRANSMISSION: 0x02,
 
-  PACKET_DELIMITER_0: 0xb1, // TODO: Replace old system with this
-  PACKET_DELIMITER_1: 0x1b,
-  PACKET_DELIMITER_2: 0x13,
-  PACKET_DELIMITER_3: 0xb5,
+  PACKET_DELIMITER_0: 0xBA,
+  PACKET_DELIMITER_1: 0xDD,
+  PACKET_DELIMITER_2: 0xF0,
+  PACKET_DELIMITER_3: 0x0D,
 };
 
 export class Chunkasaurus {
@@ -57,21 +57,33 @@ export class Chunkasaurus {
     const packets = [];
 
     const randID = getRandomInt(0, 255);
-    const hewwoBuffer = new Uint8Array(4);
+    const hewwoBuffer = new Uint8Array(8);
     hewwoBuffer[0] = packetTypes.HEADER_0;
     hewwoBuffer[1] = packetTypes.HEADER_1;
     hewwoBuffer[2] = packetTypes.PACKET_BEGIN;
+    
     hewwoBuffer[3] = randID;
+    
+    hewwoBuffer[4] = packetTypes.PACKET_DELIMITER_0;
+    hewwoBuffer[5] = packetTypes.PACKET_DELIMITER_1;
+    hewwoBuffer[6] = packetTypes.PACKET_DELIMITER_2;
+    hewwoBuffer[7] = packetTypes.PACKET_DELIMITER_3;
 
     packets.push(Uint8Array.from(hewwoBuffer));
 
     if (packet.length < this.chunkSize) {
-      const dataPacket = new Uint8Array(packet.length + 4);
+      const dataPacket = new Uint8Array(packet.length + 8);
       dataPacket[0] = packetTypes.HEADER_0;
       dataPacket[1] = packetTypes.HEADER_1;
       dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
+      
       dataPacket[3] = randID;
 
+      dataPacket[packet.length+4] = packetTypes.PACKET_DELIMITER_0;
+      dataPacket[packet.length+5] = packetTypes.PACKET_DELIMITER_1;
+      dataPacket[packet.length+6] = packetTypes.PACKET_DELIMITER_2;
+      dataPacket[packet.length+7] = packetTypes.PACKET_DELIMITER_3;
+      
       dataPacket.set(packet, 4);
 
       hewwoBuffer[2] = packetTypes.PACKET_END;
@@ -81,11 +93,16 @@ export class Chunkasaurus {
       return packets;
     }
 
-    const dataPacket = new Uint8Array(this.chunkSize + 4);
+    const dataPacket = new Uint8Array(this.chunkSize + 8);
     dataPacket[0] = packetTypes.HEADER_0;
     dataPacket[1] = packetTypes.HEADER_1;
     dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
     dataPacket[3] = randID;
+
+    dataPacket[this.chunkSize+4] = packetTypes.PACKET_DELIMITER_0;
+    dataPacket[this.chunkSize+5] = packetTypes.PACKET_DELIMITER_1;
+    dataPacket[this.chunkSize+6] = packetTypes.PACKET_DELIMITER_2;
+    dataPacket[this.chunkSize+7] = packetTypes.PACKET_DELIMITER_3;
 
     // TODO: Implement this garbage
     // This could also be done a better way
@@ -129,11 +146,16 @@ export class Chunkasaurus {
 
       // Rebuild a temp array with our more exact information
       // FIXME: I don't really like ` - iterationCnt`. Maybe look into this?
-      const dataPacket = new Uint8Array(remainingData + 4 - iterationCnt);
+      const dataPacket = new Uint8Array(remainingData + 8 - iterationCnt);
       dataPacket[0] = packetTypes.HEADER_0;
       dataPacket[1] = packetTypes.HEADER_1;
       dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
       dataPacket[3] = randID;
+
+      dataPacket[slicedData.length+4] = packetTypes.PACKET_DELIMITER_0;
+      dataPacket[slicedData.length+5] = packetTypes.PACKET_DELIMITER_1;
+      dataPacket[slicedData.length+6] = packetTypes.PACKET_DELIMITER_2;
+      dataPacket[slicedData.length+7] = packetTypes.PACKET_DELIMITER_3;
 
       dataPacket.set(slicedData, 4);
       packets.push(Uint8Array.from(dataPacket));
@@ -148,35 +170,39 @@ export class Chunkasaurus {
 
   dechunk(chunkedPacket) {
     const splitData = splitUint8Array(chunkedPacket, [
-      packetTypes.HEADER_0,
-      packetTypes.HEADER_1,
+      packetTypes.PACKET_DELIMITER_0,
+      packetTypes.PACKET_DELIMITER_1,
+      packetTypes.PACKET_DELIMITER_2,
+      packetTypes.PACKET_DELIMITER_3
     ]);
 
     for (const data of splitData) {
-      if (data[0] == packetTypes.PACKET_BEGIN) {
-        this.chunkedPackets[data[1]] = [];
+      if (data[0] != packetTypes.HEADER_0 || data[1] != packetTypes.HEADER_1) continue;
+
+      if (data[2] == packetTypes.PACKET_BEGIN) {
+        this.chunkedPackets[data[3]] = [];
         return;
-      } else if (data[0] == packetTypes.PACKET_TRANSMISSION) {
+      } else if (data[2] == packetTypes.PACKET_TRANSMISSION) {
         // Attempt to fetch the current packet pheonix entry
         const packetPheonixEntryIndex = Object.keys(this.chunkedPackets).find(
-          (i) => i == data[1]
+          (i) => i == data[3]
         );
 
         if (!packetPheonixEntryIndex) {
           console.error(
             "WARNING: Invalid packet pheonix ID (recieved %s)",
-            data[1]
+            data[3]
           );
           return;
         }
 
         const packetPheonixEntry = this.chunkedPackets[packetPheonixEntryIndex];
-        const mappedArray = data.slice(2, data.length);
+        const mappedArray = data.slice(4, data.length);
 
         packetPheonixEntry.push(mappedArray);
-      } else if (data[0] == packetTypes.PACKET_END) {
+      } else if (data[2] == packetTypes.PACKET_END) {
         const packetPheonixEntryIndex = Object.keys(this.chunkedPackets).find(
-          (i) => i == data[1]
+          (i) => i == data[3]
         );
         
         if (!packetPheonixEntryIndex) {

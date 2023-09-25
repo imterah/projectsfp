@@ -1,7 +1,7 @@
 import { Chunkasaurus } from "./libs/Chunkasaurus.mjs";
 
 const chunkasarus = new Chunkasaurus(1000);
-const uint8Source = new Uint8Array(8*1024);
+const uint8Source = new Uint8Array(1024);
 
 let x255Count = 0;
 for (var i = 0; i <= uint8Source.length; i++) {
@@ -12,6 +12,8 @@ for (var i = 0; i <= uint8Source.length; i++) {
 }
 
 const chunked = chunkasarus.chunk(uint8Source);
+console.log(chunked);
+
 let magic = new Uint8Array(1);
 
 for (const chunk of chunked) {
