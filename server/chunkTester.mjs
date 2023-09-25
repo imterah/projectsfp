@@ -1,7 +1,7 @@
 import { Chunkasaurus } from "./libs/Chunkasaurus.mjs";
 
-const chunkasarus = new Chunkasaurus(1000);
-const uint8Source = new Uint8Array(1024);
+const chunkasarus = new Chunkasaurus(50);
+const uint8Source = new Uint8Array(255);
 
 let x255Count = 0;
 for (var i = 0; i <= uint8Source.length; i++) {
@@ -15,7 +15,7 @@ const chunked = chunkasarus.chunk(uint8Source);
 let magic = new Uint8Array(1);
 
 for (const chunk of chunked) {
-  const dechunkedData = chunkasarus.dechunk(chunk);
+  const dechunkedData = await chunkasarus.dechunk(chunk);
   if (typeof dechunkedData != "undefined") {
     magic = dechunkedData;
   }
@@ -23,10 +23,6 @@ for (const chunk of chunked) {
 let hasPassed = true;
 
 for (const magicEntryIndex in magic) {
-  if (uint8Source-1 < magicEntryIndex) {
-    console.log("WARNING: OOB! Returning...")
-  }
-
   const magicEntry = magic[magicEntryIndex];
   const sourceData = uint8Source[magicEntryIndex];
 

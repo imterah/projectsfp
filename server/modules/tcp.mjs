@@ -77,7 +77,7 @@ export function main(config, db) {
         return;
       }
 
-      const dataUnchunked = socket.chunkasarus.dechunk(data);
+      const dataUnchunked = await socket.chunkasarus.dechunk(data);
       if (dataUnchunked) {
         // Attempt to decrypt the message
         const dataDecrypted = await socket.encryption.decrypt(dataUnchunked).catch((e) => {
