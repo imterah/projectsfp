@@ -134,19 +134,17 @@ export class Chunkasaurus {
 
     if (currentActualPos != 0) {
       const calcCurrentPos = (iterationCnt * this.chunkSize) - (iterationCnt);
-      const remainingData = packet.length - calcCurrentPos;
 
       if (calcCurrentPos > packet.length)
         throw new Error("Current position greater than encrypted data length");
 
       const slicedData = packet.slice(
         calcCurrentPos + iterationCnt,
-        calcCurrentPos + remainingData + iterationCnt
+        packet.length-1
       );
 
       // Rebuild a temp array with our more exact information
-      // FIXME: I don't really like ` - iterationCnt`. Maybe look into this?
-      const dataPacket = new Uint8Array((remainingData + 8 - iterationCnt) > 0 ? (remainingData + 8 - iterationCnt) : 0);
+      const dataPacket = new Uint8Array(slicedData.length+8);
       dataPacket[0] = packetTypes.HEADER_0;
       dataPacket[1] = packetTypes.HEADER_1;
       dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
@@ -184,6 +182,8 @@ export class Chunkasaurus {
       packetTypes.PACKET_DELIMITER_2,
       packetTypes.PACKET_DELIMITER_3
     ]);
+
+    console.log(splitData.length, splitData);
 
     let returnData;
     

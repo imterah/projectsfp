@@ -12,8 +12,6 @@ for (var i = 0; i <= uint8Source.length; i++) {
 }
 
 const chunked = chunkasarus.chunk(uint8Source);
-console.log(chunked);
-
 let magic = new Uint8Array(1);
 
 for (const chunk of chunked) {
