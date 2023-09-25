@@ -1,5 +1,6 @@
 import { getRandomInt } from "./getRandomInt.mjs";
 
+// https://chat.openai.com/share/19c44c9c-b9de-4f33-a29f-f152a8bc3fd6
 function splitUint8Array(uint8Array, delimiters) {
   const result = [];
   let startIndex = 0;
@@ -47,6 +48,21 @@ const packetTypes = {
   PACKET_DELIMITER_3: 0x0D,
 };
 
+function createDataBasePacket(size) {
+  const dataPacket = new Uint8Array(size+9);
+
+  dataPacket[0] = packetTypes.HEADER_0;
+  dataPacket[1] = packetTypes.HEADER_1;
+  dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
+
+  dataPacket[size+5] = packetTypes.PACKET_DELIMITER_0;
+  dataPacket[size+6] = packetTypes.PACKET_DELIMITER_1;
+  dataPacket[size+7] = packetTypes.PACKET_DELIMITER_2;
+  dataPacket[size+8] = packetTypes.PACKET_DELIMITER_3;
+
+  return dataPacket;
+}
+
 export class Chunkasaurus {
   constructor(chunkSize = 1000) {
     this.chunkedPackets = {};
@@ -65,49 +81,25 @@ export class Chunkasaurus {
       packetChunkHeaders[packetChunkHeaderIndex] = getRandomInt(0, 255);
 
     const randID = getRandomInt(0, 255);
-    const helloBuffer = new Uint8Array(8+packetChunkHeaders.length);
-    const hewwoBuffer = new Uint8Array(8);
+    const hewwoBuffer = new Uint8Array(8+packetChunkHeaders.length);
     
-    helloBuffer[0] = packetTypes.HEADER_0;
-    helloBuffer[1] = packetTypes.HEADER_1;
-    helloBuffer[2] = packetTypes.PACKET_BEGIN;
-    
-    helloBuffer[3] = randID;
-
-    helloBuffer.set(packetChunkHeaders, 4);
-    
-    helloBuffer[packetChunkHeaders.length+4] = packetTypes.PACKET_DELIMITER_0;
-    helloBuffer[packetChunkHeaders.length+5] = packetTypes.PACKET_DELIMITER_1;
-    helloBuffer[packetChunkHeaders.length+6] = packetTypes.PACKET_DELIMITER_2;
-    helloBuffer[packetChunkHeaders.length+7] = packetTypes.PACKET_DELIMITER_3;
-
-    // TODO: This crap needs optimizing.
     hewwoBuffer[0] = packetTypes.HEADER_0;
     hewwoBuffer[1] = packetTypes.HEADER_1;
     hewwoBuffer[2] = packetTypes.PACKET_BEGIN;
-    
     hewwoBuffer[3] = randID;
     
-    hewwoBuffer[4] = packetTypes.PACKET_DELIMITER_0;
-    hewwoBuffer[5] = packetTypes.PACKET_DELIMITER_1;
-    hewwoBuffer[6] = packetTypes.PACKET_DELIMITER_2;
-    hewwoBuffer[7] = packetTypes.PACKET_DELIMITER_3;
+    hewwoBuffer[packetChunkHeaders.length+4] = packetTypes.PACKET_DELIMITER_0;
+    hewwoBuffer[packetChunkHeaders.length+5] = packetTypes.PACKET_DELIMITER_1;
+    hewwoBuffer[packetChunkHeaders.length+6] = packetTypes.PACKET_DELIMITER_2;
+    hewwoBuffer[packetChunkHeaders.length+7] = packetTypes.PACKET_DELIMITER_3;
 
-    packets.push(Uint8Array.from(helloBuffer));
+    hewwoBuffer.set(packetChunkHeaders, 4);
+    packets.push(Uint8Array.from(hewwoBuffer));
 
     if (packet.length < this.chunkSize) {
-      const dataPacket = new Uint8Array(packet.length + 8);
-      dataPacket[0] = packetTypes.HEADER_0;
-      dataPacket[1] = packetTypes.HEADER_1;
-      dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
-      
+      const dataPacket = createDataBasePacket(packet.length);
       dataPacket[3] = randID;
-      dataPacket[4] = 0;
-
-      dataPacket[packet.length+5] = packetTypes.PACKET_DELIMITER_0;
-      dataPacket[packet.length+6] = packetTypes.PACKET_DELIMITER_1;
-      dataPacket[packet.length+7] = packetTypes.PACKET_DELIMITER_2;
-      dataPacket[packet.length+8] = packetTypes.PACKET_DELIMITER_3;
+      dataPacket[4] = packetChunkHeaders[0];
       
       dataPacket.set(packet, 5);
 
@@ -118,18 +110,8 @@ export class Chunkasaurus {
       return packets;
     }
 
-    const dataPacket = new Uint8Array(this.chunkSize + 9);
-    dataPacket[0] = packetTypes.HEADER_0;
-    dataPacket[1] = packetTypes.HEADER_1;
-    dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
-    
+    const dataPacket = createDataBasePacket(this.chunkSize);
     dataPacket[3] = randID;
-    dataPacket[4] = 0;
-
-    dataPacket[this.chunkSize+5] = packetTypes.PACKET_DELIMITER_0;
-    dataPacket[this.chunkSize+6] = packetTypes.PACKET_DELIMITER_1;
-    dataPacket[this.chunkSize+7] = packetTypes.PACKET_DELIMITER_2;
-    dataPacket[this.chunkSize+8] = packetTypes.PACKET_DELIMITER_3;
 
     // TODO: Implement this garbage
     // This could also be done a better way
@@ -173,18 +155,9 @@ export class Chunkasaurus {
       );
 
       // Rebuild a temp array with our more exact information
-      const dataPacket = new Uint8Array(slicedData.length+9);
-      dataPacket[0] = packetTypes.HEADER_0;
-      dataPacket[1] = packetTypes.HEADER_1;
-      dataPacket[2] = packetTypes.PACKET_TRANSMISSION;
-      
+      const dataPacket = createDataBasePacket(slicedData.length);
       dataPacket[3] = randID;
       dataPacket[4] = packetChunkHeaders[packetChunkHeaders.length-1];
-
-      dataPacket[slicedData.length+5] = packetTypes.PACKET_DELIMITER_0;
-      dataPacket[slicedData.length+6] = packetTypes.PACKET_DELIMITER_1;
-      dataPacket[slicedData.length+7] = packetTypes.PACKET_DELIMITER_2;
-      dataPacket[slicedData.length+8] = packetTypes.PACKET_DELIMITER_3;
 
       dataPacket.set(slicedData, 5);
       packets.push(Uint8Array.from(dataPacket));
@@ -259,25 +232,25 @@ export class Chunkasaurus {
         let totalLenCalc = 0;
 
         while (Object.keys(packetPheonixEntry.packets).length != packetPheonixEntry.packetPosData.length) {
-          console.log("Missing data -- waiting a bit...");
-          await new Promise((i) => setTimeout(i, 1000));
+          await new Promise((i) => setTimeout(i, 10));
         }
 
         for (const packetEntryIndex of Object.keys(packetPheonixEntry.packets)) 
           totalLenCalc += packetPheonixEntry.packets[packetEntryIndex].length;
         const packetReconstructed = new Uint8Array(totalLenCalc);
 
-        // I love doing the equivalent of memmap(?). Mapping my beloved
         let currentMapPos = 0;
 
         for (const packetPosition of packetPheonixEntry.packetPosData) {
           const packetEntry = packetPheonixEntry.packets[packetPosition];
+
           packetReconstructed.set(packetEntry, currentMapPos);
           currentMapPos += packetEntry.length;
         }
 
         delete this.chunkedPackets[packetPheonixEntryIndex];
         returnData = packetReconstructed;
+
         continue;
       }
     }
