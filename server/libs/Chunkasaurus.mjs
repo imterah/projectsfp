@@ -177,7 +177,6 @@ export class Chunkasaurus {
       packetTypes.PACKET_DELIMITER_2,
       packetTypes.PACKET_DELIMITER_3
     ]);
-
     let returnData;
     
     for (const data of splitData) {
@@ -188,22 +187,46 @@ export class Chunkasaurus {
         
         this.chunkedPackets[data[3]] = {
           packets: {},
-          packetPosData: packetPosData
+          packetPosData: packetPosData,
+          isAllocatedProperly: true
         };
 
         continue;
       } else if (data[2] == packetTypes.PACKET_TRANSMISSION) {
         // Attempt to fetch the current packet pheonix entry
-        const packetPheonixEntryIndex = Object.keys(this.chunkedPackets).find(
+        let packetPheonixEntryIndex = Object.keys(this.chunkedPackets).find(
           (i) => i == data[3]
         );
 
-        if (!packetPheonixEntryIndex) {
-          console.error(
-            "WARNING: Invalid packet pheonix ID (recieved %s)",
-            data[3]
-          );
-          continue;
+        let tryCount = 0;
+
+        while (!packetPheonixEntryIndex) {
+          if (tryCount <= 200) {
+            console.error(
+              "WARNING: Invalid packet pheonix ID (recieved %s). Retrying search...",
+              data[3]
+            );
+  
+            await new Promise((i) => setTimeout(i, 10));
+            packetPheonixEntryIndex = Object.keys(this.chunkedPackets).find(
+              (i) => i == data[3]
+            );
+
+            tryCount++;
+          } else {
+            console.error("WARNING: Failed to find. Rebuilding as-is...");
+            this.chunkedPackets[data[3]] = {
+              packets: {},
+              packetPosData: [],
+              isAllocatedProperly: false
+            };
+
+            packetPheonixEntryIndex = Object.keys(this.chunkedPackets).find(
+              (i) => i == data[3]
+            );
+
+            break;
+          }
         }
 
         const chunkAllignmentPos = data[4];
@@ -211,8 +234,10 @@ export class Chunkasaurus {
         const packetPheonixEntry = this.chunkedPackets[packetPheonixEntryIndex];
         const mappedArray = data.slice(5, data.length);
 
+        if (!packetPheonixEntry.isAllocatedProperly) packetPheonixEntry.packetPosData.push(chunkAllignmentPos);
         if (packetPheonixEntry.packetPosData.indexOf(chunkAllignmentPos) == -1) {
-          throw new Error("Failed to find packet allignment element");
+          console.warn("Failed to find packet allignment element. Skipping this chunk (WILL CAUSE PROBLEMS!)");
+          return;
         }
 
         packetPheonixEntry.packets[chunkAllignmentPos] = mappedArray;
