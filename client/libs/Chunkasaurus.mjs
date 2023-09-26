@@ -151,7 +151,7 @@ export class Chunkasaurus {
 
       const slicedData = packet.slice(
         calcCurrentPos + iterationCnt,
-        packet.length-1
+        packet.length
       );
 
       // Rebuild a temp array with our more exact information

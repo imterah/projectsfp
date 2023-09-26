@@ -22,7 +22,7 @@ for (const chunk of chunked) {
 }
 let hasPassed = true;
 
-for (const magicEntryIndex in magic) {
+for (const magicEntryIndex in uint8Source) {
   const magicEntry = magic[magicEntryIndex];
   const sourceData = uint8Source[magicEntryIndex];
 
