@@ -1,13 +1,14 @@
 import { strict as assert } from "node:assert";
 import { Socket } from "node:net";
 
+import { WebSocket } from "ws";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 
 const decoder = new TextDecoder();
 
 export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSocketID, serverIP, serverPort, clientDB) {
-  const socket = new Socket();
   const socketClient = new Socket();
+  const ws = new WebSocket(`ws://${serverIP}:${serverPort}`);
 
   const clientFound = await clientDB.findOne({
     refID
@@ -26,10 +27,10 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
 
   const encryptedChallenge = btoa(await encryption.encrypt("FRESH_TCP_CHALLENGER", "text"));
   
-  socket.on("connect", () => {
-    socket.write(`EXPLAIN_TCP ${refID} ${serverSocketID} ${encryptedChallenge}`);
+  ws.on("open", () => {
+    ws.send(`EXPLAIN_TCP ${refID} ${serverSocketID} ${encryptedChallenge}`);
 
-    socket.on("data", async(data) => {
+    ws.on("message", async(data) => {
       let justRecievedPraise = false;
       const dataDecrypted = await encryption.decrypt(data);
 
@@ -54,36 +55,43 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
 
       // FIXME: This should be a daemon.
 
-      if (justRecievedPraise) return;
-      
-      if (!isClientConnReady) clientConnBuffer.push(dataDecrypted);
-      else socketClient.write(dataDecrypted);
-    });
-
-    socketClient.on("connect", () => {
-      socketClient.on("data", async(data) => {
-        const dataEncrypted = await encryption.encrypt(data);
-        if (serverConnBuffer && serverConnBuffer.length != 0) {
+      if (justRecievedPraise) {
+        if (serverConnBuffer.length != 0) {
           while (serverConnBuffer.length != 0) {
             const item = serverConnBuffer[0];
-            socket.write(item);
+            ws.send(item);
             
             serverConnBuffer.splice(0, 1);
           }
 
           assert.equal(serverConnBuffer.length, 0, "Server connection buffer is not empty");
         }
- 
-        console.log(dataEncrypted);
-
-        if (!isServerConnReady) serverConnBuffer.push(dataEncrypted); 
-        else socket.write(dataEncrypted);
-      });
-
-      isClientConnReady = true;
+      }
+      
+      if (!isClientConnReady) clientConnBuffer.push(dataDecrypted);
+      else socketClient.write(dataDecrypted);
     });
   });
-  
-  socket.connect(serverPort, serverIP);
+
+  socketClient.on("connect", () => {
+    socketClient.on("data", async(data) => {
+      const dataEncrypted = await encryption.encrypt(data);
+
+      if (!isServerConnReady) serverConnBuffer.push(dataEncrypted); 
+      else ws.send(dataEncrypted);
+    });
+
+    isClientConnReady = true;
+    
+    while (clientConnBuffer.length != 0) {
+      const item = clientConnBuffer[0];
+      socketClient.write(item);
+
+      clientConnBuffer.splice(0, 1);
+    }
+
+    assert.equal(clientConnBuffer.length, 0, "Client connection buffer is not empty");
+  });
+
   socketClient.connect(tcpLocalPort, tcpLocalIP);
 }

@@ -1,6 +1,8 @@
 import net from "node:net";
-import { getRandomInt } from "../libs/getRandomInt.mjs";
 
+import { WebSocketServer } from "ws";
+
+import { getRandomInt } from "../libs/getRandomInt.mjs";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 
 const decoder = new TextDecoder();
@@ -19,29 +21,31 @@ const msgCallbacks = [
 ];
 
 export function main(config, db) {
-  const server = net.createServer();
-  server.on("connection", (socket) => {
-    socket.ready = false;
+  const wss = new WebSocketServer({ port: config.ports.tcp });
+
+  wss.on("connection", (ws) => {
+    ws.ready = false;
     
-    socket.on("data", async(data) => {
-      if (!socket.ready) { // Yes I know I have a better method of doing this
-        // Yes, this is a near exact port of my auth system in websockets.js
+    ws.on("message", async(data) => {
+      if (!ws.ready) { // Yes, I know I have a better method of doing this.
+        // And yes, this is a near exact port of my auth system in websockets.js
         const msgText = decoder.decode(data);
-        if (!msgText.startsWith("EXPLAIN_TCP")) return socket.end();
+        
+        if (!msgText.startsWith("EXPLAIN_TCP")) return ws.close();
 
         const msgSplit = msgText.split(" ");
         const dbSearch = await db.findOne({
           refID: parseInt(msgSplit[1]) 
         });
 
-        if (!dbSearch) return socket.end();
-        socket.keyData = dbSearch;
+        if (!dbSearch) return ws.close();
+        ws.keyData = dbSearch;
 
-        socket.msgGenObject = msgCallbacks.find((i) => i.id == parseInt(msgSplit[2]));
-        if (!socket.msgGenObject) return socket.end();
+        ws.msgGenObject = msgCallbacks.find((i) => i.id == parseInt(msgSplit[2]));
+        if (!ws.msgGenObject) return ws.close();
 
-        socket.encryption = new EasyEncrypt(dbSearch.userPublicKey, dbSearch.selfPrivateKey, "");
-        await socket.encryption.init();
+        ws.encryption = new EasyEncrypt(dbSearch.userPublicKey, dbSearch.selfPrivateKey, "");
+        await ws.encryption.init();
 
         // ...except we switch up the message to prevent some forms of replay attacks
 
@@ -49,47 +53,41 @@ export function main(config, db) {
         // then replays it. This only blocks that, currently. You could easily (probably even more so)
         // sniff the TCP challenge and replay it still. Probably skids who know more could replay the
         // TCP/IP data. So I guess FIXME?
-        const decryptedChallenge = await socket.encryption.decrypt(atob(msgSplit[3]), "text");
+        const decryptedChallenge = await ws.encryption.decrypt(atob(msgSplit[3]), "text");
         if (decryptedChallenge == "CHALLENGE") {
-          console.log("Whoops? Caught potential replay attack for IP:", socket.remoteAddress);
+          console.log("Whoops? Caught potential replay attack for IP:", ws._socket.remoteAddress);
           console.log("Check failed: decryptedChallenge = 'CHALLENGE' // challenge used for WS auth");
 
-          socket.write("NAHHH mf just prank called the server :skull:");
-          return socket.close();
+          ws.send("NAHHH mf just prank called the server :skull:");
+          return ws.close();
         }
 
-        if (decryptedChallenge != "FRESH_TCP_CHALLENGER") return socket.end();
+        if (decryptedChallenge != "FRESH_TCP_CHALLENGER") return ws.close();
         
         // Update the send method to auto encrypt
-        socket.msgGenObject.onServerClosure = socket.end;
-        socket.msgGenObject.recvFunc = async(msg) => {
-          const encryptedMessage = await socket.encryption.encrypt(msg);
-          socket.write(encryptedMessage);
+        ws.msgGenObject.onServerClosure = () => ws.close();
+        ws.msgGenObject.recvFunc = async(msg) => {
+          const encryptedMessage = await ws.encryption.encrypt(msg);
+          ws.send(encryptedMessage);
         };
 
-        socket.msgGenObject.isServerReady = true;
-        socket.ready = true;
+        ws.msgGenObject.isServerReady = true;
+        ws.ready = true;
         
-        socket.write(await socket.encryption.encrypt(encoder.encode("SUCCESS")));
-        console.log("Server validated");
+        ws.send(await ws.encryption.encrypt(encoder.encode("SUCCESS")));
         return;
       }
 
       // Attempt to decrypt the message
-      const dataDecrypted = await socket.encryption.decrypt(data).catch((e) => {
-        console.error(e);
-        console.log("NEVER FORGOR");
-        return;
+      const dataDecrypted = await ws.encryption.decrypt(data).catch((e) => {
+        return console.error(e);
       });
       if (!dataDecrypted) return;
       
-      console.log("decrypted data", dataDecrypted);
-
-      socket.msgGenObject.sendFunc(dataDecrypted);
+      ws.msgGenObject.sendFunc(dataDecrypted);
     });
   });
 
-  server.listen(config.ports.tcp);
   console.log("TCP Relay Server listening on ::" + config.ports.tcp);
 }
 
