@@ -57,7 +57,7 @@ export class EasyEncrypt {
     return encrypted;
   }
 
-  async decrypt(msg, format = "binary") {
+  async decrypt(msg, format = "binary", disableVerification = false) {
     const opts = {};
     if (format == "binary") {
       opts["binaryMessage"] = msg;
@@ -78,12 +78,12 @@ export class EasyEncrypt {
       throw new Error("Failed to decrypt message")
     });
 
-    if (this.publicKey) {
+    if (this.publicKey && !disableVerification) {
       try {
         await signatures[0].verified;
       } catch (e) {
         console.error("Could not verify signature!", e.message, "\nTrace:");
-        console.error(trace);
+        console.error(e);
 
         if (format == "binary") {
           const uintDummy = new Uint8Array(1);

@@ -7,42 +7,46 @@ import openpgp from "openpgp";
 
 const prompt = promptSync();
 
+const pairKey = await openpgp.generateKey({
+  type: "ecc",
+  curve: "curve25519",
+  userIDs: [
+    {
+      name: "pairkey",
+      email: "pair@example.com",
+    },
+  ],
+  passphrase: "",
+  format: "armored",
+});
+
+const oneTimeDecryption = new EasyEncrypt(null, pairKey.privateKey, "");
+await oneTimeDecryption.init();
+
 export function init(db, config) {
   const app = express();
 
   function validateIfIsAllowedToPair(ip) {
-    if (config.forceAcceptIPs.includes(ip)) return {
-      allowed: true,
-      autoAccept: true
-    };
-  
-    if (config.whitelistedIPs.includes(ip)) return {
-      allowed: true,
-      autoAccept: false
-    };
-  
-    if (config.blacklistedIPs.includes(ip)) return {
-      allowed: false,
-      autoAccept: false
-    };
-  
     return {
-      allowed: config.blockNewIPsAutomatically,
-      autoAccept: false
+      allowed: config.blacklistedIPs.includes(ip)
+        ? true
+        : config.blockNewIPsAutomatically,
+      autoAccept: config.forceAcceptIPs.includes(ip),
     };
   }
 
   app.post("/api/v1/allowedToPair", (req, res) => {
-    if (validateIfIsAllowedToPair(req.ip).allowed)
-      return res.send({
-        success: true,
-        allowed: true,
-      });
-
     return res.send({
       success: true,
-      allowed: false,
+      allowed: validateIfIsAllowedToPair(req.ip).allowed,
     });
+  });
+
+  app.get("/api/v1/pairPublicKey", (req, res) => {
+    return res.send({
+      success: true,
+      publicKey: pairKey.publicKey
+    })
   });
 
   app.post("/api/v1/pair", async (req, res) => {
@@ -98,17 +102,19 @@ export function init(db, config) {
 
     const refID = getRandomInt(100000, 999999);
 
+    const publicKeyDecrypted = await oneTimeDecryption.decrypt(req.body.gpgPublicKey, "text");
+
+    // Initialize encryption
+    const encryption = new EasyEncrypt(publicKeyDecrypted);
+    await encryption.init();
+
     await db.insertOne({
-      userPublicKey: req.body.gpgPublicKey,
+      userPublicKey: publicKeyDecrypted,
       selfPublicKey: publicKey,
       selfPrivateKey: privateKey,
       selfRevokeCert: revocationCertificate,
       refID,
     });
-
-    // Initialize encryption
-    const encryption = new EasyEncrypt(req.body.gpgPublicKey);
-    await encryption.init();
 
     const publicKeyEncrypted = await encryption.encrypt(publicKey, "text");
 

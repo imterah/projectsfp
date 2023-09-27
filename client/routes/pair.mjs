@@ -54,6 +54,9 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
         error: "Server returned not allowed to pair"
       });
     };
+
+    const serverPublicKeyReq = await axios.get(req.body.url + "/api/v1/pairPublicKey");
+    const serverPublicKey = serverPublicKeyReq.data.publicKey;
   
     const { privateKey, publicKey, revocationCertificate } = await openpgp.generateKey({
       type: "ecc",
@@ -65,19 +68,19 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
       passphrase: "", // TODO: figure out a way to implement passwords securely
       format: "armored"
     });
-  
+
+    // Decrypt the servers public key without verification. Some could say I'm overreacting, but it's not that much work, to be honest.
+    const encryption = new EasyEncrypt(serverPublicKey, privateKey, "");
+    await encryption.init();
+
     const pairingData = await axios.post(req.body.url + "/api/v1/pair", {
-      gpgPublicKey: publicKey,
+      gpgPublicKey: await encryption.encrypt(publicKey, "text"),
       name: `${user.username} [Server Key @ ProjectSFP]`,
       email: `${user.username}@1dummy.greysoh.dev`
     });
-
-    // Decrypt the servers public key without verification. Some could say I'm overreacting, but it's not that much work, to be honest.
-    const encryption = new EasyEncrypt(null, privateKey, "");
-    await encryption.init();
     
     await clientDB.insertOne({
-      serverPublicKey: await encryption.decrypt(pairingData.data.publicKey, "text"),
+      serverPublicKey: await encryption.decrypt(pairingData.data.publicKey, "text", true),
       selfPublicKey: publicKey,
       selfPrivateKey: privateKey,
       selfRevokeCert: revocationCertificate,
