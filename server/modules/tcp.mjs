@@ -86,6 +86,16 @@ export function main(config, db) {
       
       ws.msgGenObject.sendFunc(dataDecrypted);
     });
+
+    ws.on("close", () => {
+      if (!ws.msgGenObject) return;
+      
+      try {
+        ws.msgGenObject.onClientClosure();
+      } catch (e) {
+        //
+      }
+    });
   });
 
   console.log("TCP Relay Server listening on ::" + config.ports.tcp);
@@ -102,7 +112,7 @@ export function setUpConn(activeID, externalConnectNotifcations, port, config, d
       id: socket.id,
       refIDBase: activeID,
       isServerReady: false,
-      onClientClosure: () => socket.end,
+      onClientClosure: () => socket.end(),
       onServerClosure: () => {},
       sendFunc: (msg) => socket.write(msg),
       recvFunc: (msg) => {}
@@ -130,6 +140,26 @@ export function setUpConn(activeID, externalConnectNotifcations, port, config, d
     socket.on("data", async(data) => {
       if (!msgGenObject.isServerReady) return socket.messageReplayCache.push(data);
       await socket.msgGenObject.recvFunc(data);
+    });
+
+    socket.on("error", (e) => {
+      console.error("An error has occured:", e);
+      console.error("Closing current connection...");
+  
+      socket.msgGenObject.onServerClosure();
+      try {
+        socket.end();
+      } catch (e) {
+        console.error("Failed to end connection on socketClient:", e);
+      }
+    });
+
+    socket.on("close", () => {
+      try {
+        socket.msgGenObject.onServerClosure();
+      } catch (e) {
+        //
+      }
     });
   });
 

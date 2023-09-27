@@ -93,5 +93,27 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
     assert.equal(clientConnBuffer.length, 0, "Client connection buffer is not empty");
   });
 
+  socketClient.on("error", (e) => {
+    console.error("An error has occured:", e);
+    console.error("Closing current connection...");
+
+    ws.close();
+    try {
+      socketClient.end();
+    } catch (e) {
+      console.error("Failed to end connection on socketClient:", e);
+    }
+  });
+
+  socketClient.on("close", () => {
+    if (ws.CLOSED) return;
+    ws.close();
+  });
+
+  ws.on("close", () => {
+    if (socketClient.closed) return;
+    socketClient.end();
+  });
+
   socketClient.connect(tcpLocalPort, tcpLocalIP);
 }
