@@ -20,22 +20,22 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
     ws.isReady = false;
 
     ws.encryption = new SymmEasyEncrypt(clientFound.password, "text");
-    const encryptedChallenge = btoa(ws.encryption.encrypt("CHALLENGE", "text"));
+    const encryptedChallenge = ws.encryption.encrypt("CHALLENGE", "text");
 
     ws.send(`EXPLAIN ${clientID} ${encryptedChallenge}`);
     
     ws.addEventListener("message", async(msg) => {
-      const decryptedMsg = ws.encryption.decrypt(atob(msg.data), "text");
+      const decryptedMsg = ws.encryption.decrypt(msg.data, "text");
       const msgString = decryptedMsg.toString();
 
       if (msgString == "SUCCESS") {
         // Start sending our garbage
         for (const port of ports) {
-          ws.send(btoa(ws.encryption.encrypt(JSON.stringify({
+          ws.send(ws.encryption.encrypt(JSON.stringify({
             type: "listenNotifRequest",
             port: port.destPort,
             protocol: port.protocol
-          }), "text")));
+          }), "text"));
         }
       } else if (msgString.startsWith("{")) {
         const msg = JSON.parse(msgString);

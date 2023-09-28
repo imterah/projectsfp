@@ -52,7 +52,7 @@ export function main(config, db) {
         // then replays it. This only blocks that, currently. You could easily (probably even more so)
         // sniff the TCP challenge and replay it still. Probably skids who know more could replay the
         // TCP/IP data. So I guess FIXME?
-        const decryptedChallenge = ws.encryption.decrypt(atob(msgSplit[3]), "text");
+        const decryptedChallenge = ws.encryption.decrypt(msgSplit[3], "text");
         if (decryptedChallenge == "CHALLENGE") {
           console.log("Whoops? Caught potential replay attack for IP:", ws._socket.remoteAddress);
           console.log("Check failed: decryptedChallenge = 'CHALLENGE' // challenge used for WS auth");

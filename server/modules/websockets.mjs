@@ -27,15 +27,15 @@ export async function main(config, db) {
         ws.keyData = dbSearch;
 
         ws.encryption = new SymmEasyEncrypt(dbSearch.password, "text");
-        const decryptedChallenge = ws.encryption.decrypt(atob(msgSplit[2]), "text");
+        const decryptedChallenge = ws.encryption.decrypt(msgSplit[2], "text");
         if (decryptedChallenge != "CHALLENGE") return ws.close();
         
         ws.hasSpecifiedReason = true;
-        ws.send(btoa(ws.encryption.encrypt("SUCCESS", "text")));
+        ws.send(ws.encryption.encrypt("SUCCESS", "text"));
         return;
       }
 
-      const decryptedMessage = ws.encryption.decrypt(atob(msg.data), "text");
+      const decryptedMessage = ws.encryption.decrypt(msg.data, "text");
       const msgData = JSON.parse(decryptedMessage);
 
       switch (msgData.type) {
@@ -43,12 +43,12 @@ export async function main(config, db) {
           assert.equal(msgData.protocol, "TCP", "Unsupported protocol");
           console.log("Bringing up port '%s' for protocol '%s'", msgData.port, msgData.protocol);
           
-          tcp.setUpConn(ws.keyData.refID, async(socketID) => ws.send(btoa(ws.encryption.encrypt(JSON.stringify({
+          tcp.setUpConn(ws.keyData.refID, async(socketID) => ws.send(ws.encryption.encrypt(JSON.stringify({
             type: "connection",
             protocol: msgData.protocol,
             socketID: socketID,
             port: msgData.port
-          }), "text"))), msgData.port, config, db);
+          }), "text")), msgData.port, config, db);
           break;
         }
       }

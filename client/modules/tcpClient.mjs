@@ -23,7 +23,7 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
   const serverConnBuffer = [];
 
   const encryption = new SymmEasyEncrypt(clientFound.password, "text");
-  const encryptedChallenge = btoa(encryption.encrypt("FRESH_TCP_CHALLENGER", "text"));
+  const encryptedChallenge = encryption.encrypt("FRESH_TCP_CHALLENGER", "text");
   
   ws.on("open", () => {
     ws.send(`EXPLAIN_TCP ${refID} ${serverSocketID} ${encryptedChallenge}`);
