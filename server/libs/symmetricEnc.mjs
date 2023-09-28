@@ -1,3 +1,4 @@
+import { Worker } from "worker_threads";
 import crypto from "crypto";
 
 // Still less than pgp /shrug
@@ -17,33 +18,51 @@ export class SymmEasyEncrypt {
   }
 
   encrypt(msg, format = "binary") {
-    const iv = crypto.randomBytes(ivLen);
-    const cipher = crypto.createCipheriv("aes-256-gcm", this.key, iv);
+    return new Promise((resolve, reject) => {
+      const worker = new Worker('./libs/libsymm/encrypt.mjs', {
+        workerData: {
+          msg,
+          format,
+  
+          saltLen,
+          ivLen,
 
-    const encrypted = Buffer.concat([cipher.update(msg), cipher.final()]);
-    const tag = cipher.getAuthTag();
-    const encryptedConcat = Buffer.concat([this.salt, iv, encrypted, tag]);
-
-    return format === "text" ? encryptedConcat.toString("base64") : encryptedConcat;
+          salt: this.salt,
+          key: this.key,
+        }
+      });
+      
+      worker.on('message', resolve);
+      worker.on('error', reject);
+      worker.on('exit', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Decryption worker failed with code ${code}`));
+        }
+      });
+    });
   }
 
   decrypt(msgRaw, format = "binary") {
-    const msg = format === "text" ? Buffer.from(msgRaw, "base64") : msgRaw;
+    return new Promise((resolve, reject) => {
+      const worker = new Worker('./libs/libsymm/decrypt.mjs', {
+        workerData: {
+          msgRaw,
+          format,
   
-    const salt = msg.slice(0, saltLen);
-    const iv = msg.slice(saltLen, saltLen + ivLen);
-    const tag = msg.slice(-16); // The last 16 bytes are the authentication tag.
-    const ciphertext = msg.slice(saltLen + ivLen, -16); // Extract the ciphertext.
+          saltLen,
+          ivLen,
   
-    const key = crypto.pbkdf2Sync(this.pw, salt, 100000, 256 / 8, "sha256");
-    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-  
-    // Set the authentication tag before decryption.
-    decipher.setAuthTag(tag);
-  
-    // Update the decipher with the ciphertext.
-    const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-  
-    return format === "text" ? decrypted.toString() : decrypted;
+          pw: this.pw,
+        }
+      });
+      
+      worker.on('message', resolve);
+      worker.on('error', reject);
+      worker.on('exit', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Decryption worker failed with code ${code}`));
+        }
+      });
+    })
   }
 }
