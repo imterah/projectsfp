@@ -1,3 +1,4 @@
+import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
 import { getRandomInt } from "../libs/getRandomInt.mjs";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 
@@ -30,7 +31,7 @@ export function init(db, config) {
     return {
       allowed: config.blacklistedIPs.includes(ip)
         ? true
-        : config.blockNewIPsAutomatically,
+        : !config.blockNewIPsAutomatically,
       autoAccept: config.forceAcceptIPs.includes(ip),
     };
   }
@@ -51,9 +52,9 @@ export function init(db, config) {
 
   app.post("/api/v1/pair", async (req, res) => {
     const allowedToPair = validateIfIsAllowedToPair(req.ip);
-    if (!req.body.gpgPublicKey || !req.body.name || !req.body.email) {
+    if (!req.body.encryptedPassword) {
       return res.status(400).send({
-        error: "Missing public key, name, or email",
+        error: "Missing encrypted password",
       });
     }
 
@@ -85,42 +86,16 @@ export function init(db, config) {
       req.ip
     );
 
-    const { privateKey, publicKey, revocationCertificate } =
-      await openpgp.generateKey({
-        type: "ecc",
-        curve: "curve25519",
-        userIDs: [
-          {
-            // TODO?
-            name: req.body.name,
-            email: req.body.email,
-          },
-        ],
-        passphrase: "", // TODO: figure out a way to implement passwords securely
-        format: "armored",
-      });
-
     const refID = getRandomInt(100000, 999999);
-
-    const publicKeyDecrypted = await oneTimeDecryption.decrypt(req.body.gpgPublicKey, "text");
-
-    // Initialize encryption
-    const encryption = new EasyEncrypt(publicKeyDecrypted);
-    await encryption.init();
+    const passwordDecrypted = await oneTimeDecryption.decrypt(req.body.encryptedPassword, "text");
 
     await db.insertOne({
-      userPublicKey: publicKeyDecrypted,
-      selfPublicKey: publicKey,
-      selfPrivateKey: privateKey,
-      selfRevokeCert: revocationCertificate,
+      password: passwordDecrypted,
       refID,
     });
 
-    const publicKeyEncrypted = await encryption.encrypt(publicKey, "text");
-
     res.send({
       success: true,
-      publicKey: publicKeyEncrypted,
       refID,
     });
   });
