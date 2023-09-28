@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import { Socket } from "node:net";
 
 import { WebSocket } from "ws";
-import { EasyEncrypt } from "../libs/encryption.mjs";
+import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
 
 const decoder = new TextDecoder();
 
@@ -22,17 +22,15 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
   const clientConnBuffer = [];
   const serverConnBuffer = [];
 
-  const encryption = new EasyEncrypt(clientFound.serverPublicKey, clientFound.selfPrivateKey, "");
-  await encryption.init();
-
-  const encryptedChallenge = btoa(await encryption.encrypt("FRESH_TCP_CHALLENGER", "text"));
+  const encryption = new SymmEasyEncrypt(clientFound.password, "text");
+  const encryptedChallenge = btoa(encryption.encrypt("FRESH_TCP_CHALLENGER", "text"));
   
   ws.on("open", () => {
     ws.send(`EXPLAIN_TCP ${refID} ${serverSocketID} ${encryptedChallenge}`);
 
     ws.on("message", async(data) => {
       let justRecievedPraise = false;
-      const dataDecrypted = await encryption.decrypt(data);
+      const dataDecrypted = encryption.decrypt(data);
 
       if (!isServerConnReady) {
         const decodedMsg = decoder.decode(dataDecrypted);
@@ -75,7 +73,7 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
 
   socketClient.on("connect", () => {
     socketClient.on("data", async(data) => {
-      const dataEncrypted = await encryption.encrypt(data);
+      const dataEncrypted = encryption.encrypt(data);
 
       if (!isServerConnReady) serverConnBuffer.push(dataEncrypted); 
       else ws.send(dataEncrypted);

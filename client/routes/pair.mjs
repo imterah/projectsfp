@@ -1,3 +1,4 @@
+import { SymmEasyEncrypt, genPassword } from "../../server/libs/symmetricEnc.mjs";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 import * as ws from "../modules/websocketClient.mjs";
 
@@ -57,33 +58,19 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
 
     const serverPublicKeyReq = await axios.get(req.body.url + "/api/v1/pairPublicKey");
     const serverPublicKey = serverPublicKeyReq.data.publicKey;
-  
-    const { privateKey, publicKey, revocationCertificate } = await openpgp.generateKey({
-      type: "ecc",
-      curve: "curve25519",
-      userIDs: [{ // TODO?
-        name: `${user.username} [Client Key @ ProjectSFP]`,
-        email: `${user.username}@1dummy.greysoh.dev`
-      }],
-      passphrase: "", // TODO: figure out a way to implement passwords securely
-      format: "armored"
-    });
+
+    const passwordGenerated = genPassword();
 
     // Decrypt the servers public key without verification. Some could say I'm overreacting, but it's not that much work, to be honest.
-    const encryption = new EasyEncrypt(serverPublicKey, privateKey, "");
+    const encryption = new EasyEncrypt(serverPublicKey, "");
     await encryption.init();
 
     const pairingData = await axios.post(req.body.url + "/api/v1/pair", {
-      gpgPublicKey: await encryption.encrypt(publicKey, "text"),
-      name: `${user.username} [Server Key @ ProjectSFP]`,
-      email: `${user.username}@1dummy.greysoh.dev`
+      encryptedPassword: await encryption.encrypt(passwordGenerated.toString("base64"), "text")
     });
     
     await clientDB.insertOne({
-      serverPublicKey: await encryption.decrypt(pairingData.data.publicKey, "text", true),
-      selfPublicKey: publicKey,
-      selfPrivateKey: privateKey,
-      selfRevokeCert: revocationCertificate,
+      password: passwordGenerated.toString("base64"),
       refID: pairingData.data.refID,
       url: req.body.url
     });

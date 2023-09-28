@@ -2,8 +2,8 @@ import net from "node:net";
 
 import { WebSocketServer } from "ws";
 
+import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
 import { getRandomInt } from "../libs/getRandomInt.mjs";
-import { EasyEncrypt } from "../libs/encryption.mjs";
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
@@ -44,8 +44,7 @@ export function main(config, db) {
         ws.msgGenObject = msgCallbacks.find((i) => i.id == parseInt(msgSplit[2]));
         if (!ws.msgGenObject) return ws.close();
 
-        ws.encryption = new EasyEncrypt(dbSearch.userPublicKey, dbSearch.selfPrivateKey, "");
-        await ws.encryption.init();
+        ws.encryption = new SymmEasyEncrypt(dbSearch.password, "text");
 
         // ...except we switch up the message to prevent some forms of replay attacks
 
@@ -53,7 +52,7 @@ export function main(config, db) {
         // then replays it. This only blocks that, currently. You could easily (probably even more so)
         // sniff the TCP challenge and replay it still. Probably skids who know more could replay the
         // TCP/IP data. So I guess FIXME?
-        const decryptedChallenge = await ws.encryption.decrypt(atob(msgSplit[3]), "text");
+        const decryptedChallenge = ws.encryption.decrypt(atob(msgSplit[3]), "text");
         if (decryptedChallenge == "CHALLENGE") {
           console.log("Whoops? Caught potential replay attack for IP:", ws._socket.remoteAddress);
           console.log("Check failed: decryptedChallenge = 'CHALLENGE' // challenge used for WS auth");
@@ -67,21 +66,19 @@ export function main(config, db) {
         // Update the send method to auto encrypt
         ws.msgGenObject.onServerClosure = () => ws.close();
         ws.msgGenObject.recvFunc = async(msg) => {
-          const encryptedMessage = await ws.encryption.encrypt(msg);
+          const encryptedMessage = ws.encryption.encrypt(msg);
           ws.send(encryptedMessage);
         };
 
         ws.msgGenObject.isServerReady = true;
         ws.ready = true;
         
-        ws.send(await ws.encryption.encrypt(encoder.encode("SUCCESS")));
+        ws.send(ws.encryption.encrypt(encoder.encode("SUCCESS")));
         return;
       }
 
       // Attempt to decrypt the message
-      const dataDecrypted = await ws.encryption.decrypt(data).catch((e) => {
-        return console.error(e);
-      });
+      const dataDecrypted = ws.encryption.decrypt(data);
       if (!dataDecrypted) return;
       
       ws.msgGenObject.sendFunc(dataDecrypted);

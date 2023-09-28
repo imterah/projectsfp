@@ -9,11 +9,11 @@ export function genPassword() {
 }
 
 export class SymmEasyEncrypt {
-  constructor(password) {
-    this.pw = password;
+  constructor(password, format = "binary") {
+    this.pw = format == "text" ? Buffer.from(password, "base64") : password;
 
     this.salt = crypto.randomBytes(16);
-    this.key = crypto.pbkdf2Sync(password, this.salt, 100000, 256 / 8, "sha256");
+    this.key = crypto.pbkdf2Sync(this.pw, this.salt, 100000, 256 / 8, "sha256");
   }
 
   encrypt(msg, format = "binary") {
