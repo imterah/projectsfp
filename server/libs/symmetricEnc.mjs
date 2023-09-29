@@ -5,7 +5,7 @@ const saltLen = 16;
 const ivLen = 16;
 
 export function genPassword() {
-  return crypto.randomBytes(127);
+  return crypto.randomBytes(256);
 }
 
 export class SymmEasyEncrypt {
