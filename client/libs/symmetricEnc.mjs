@@ -13,7 +13,7 @@ export class SymmEasyEncrypt {
     this.pw = format == "text" ? Buffer.from(password, "base64") : password;
 
     this.salt = crypto.randomBytes(16);
-    this.key = crypto.pbkdf2Sync(this.pw, this.salt, 100000, 256 / 8, "sha256");
+    this.key = crypto.pbkdf2Sync(this.pw, this.salt, 8192, 256 / 8, "sha256");
   }
 
   encrypt(msg, format = "binary") {
@@ -35,7 +35,7 @@ export class SymmEasyEncrypt {
     const tag = msg.slice(-16); // The last 16 bytes are the authentication tag.
     const ciphertext = msg.slice(saltLen + ivLen, -16); // Extract the ciphertext.
   
-    const key = crypto.pbkdf2Sync(this.pw, salt, 100000, 256 / 8, "sha256");
+    const key = crypto.pbkdf2Sync(this.pw, salt, 8192, 256 / 8, "sha256");
     const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
   
     // Set the authentication tag before decryption.
