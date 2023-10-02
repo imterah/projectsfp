@@ -23,7 +23,7 @@ export function init(usersDB, clientDB, portForwardDB, sessionTokens) {
 
     if (req.body.protocol != "TCP" && req.body.protocol != "UDP") {
       return res.status(400).send({
-        error: "Protocol invalid (must be TCP oder UDP)"
+        error: "Protocol invalid (must be TCP or UDP)"
       })
     }
 

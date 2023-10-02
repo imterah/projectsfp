@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import * as ws from "./modules/websockets.mjs";
 import * as pair from "./routes/pair.mjs";
 import * as tcp from "./modules/tcp.mjs";
+import * as udp from "./modules/udp.mjs";
 
 import Datastore from "nedb-promises";
 import express from "express";
@@ -52,3 +53,4 @@ app.get("/api/v1/ports", (req, res) => {
 app.listen(config.ports.http, () => console.log("HTTP Server listening on ::%s", config.ports.http));
 ws.main(config, db);
 tcp.main(config, db);
+udp.main(config, db);

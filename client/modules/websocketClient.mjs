@@ -1,5 +1,6 @@
 import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
-import { connectForward } from "./tcpClient.mjs";
+import * as tcp from "./tcpClient.mjs";
+import * as udp from "./udpClient.mjs";
 
 import { WebSocket } from "ws";
 import axios from "axios";
@@ -36,6 +37,15 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
             port: port.destPort,
             protocol: port.protocol
           }), "text"));
+
+          if (port.protocol == "UDP") {
+            // Give the server some time for it to play catch up with our request, and to start up the port
+            await new Promise((i) => setTimeout(i, 500));
+            const url = new URL(clientIPAddr);
+            const ip = url.host;
+
+            udp.connectForward(parseInt(clientID), port.sourcePort, port.ip, ip.split(":")[0], portsRes.udp, port.destPort, clientDB);
+          }
         }
       } else if (msgString.startsWith("{")) {
         const msg = JSON.parse(msgString);
@@ -64,7 +74,7 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
               const url = new URL(clientIPAddr);
               const ip = url.host;
 
-              connectForward(parseInt(clientID), msgConnect.sourcePort, msgConnect.ip, msg.socketID, ip.split(":")[0], portsRes.tcp, clientDB);
+              tcp.connectForward(parseInt(clientID), msgConnect.sourcePort, msgConnect.ip, msg.socketID, ip.split(":")[0], portsRes.tcp, clientDB);
             } else if (msg.protocol == "UDP") return console.error("Not implemented [UDP]");
           }
         }
