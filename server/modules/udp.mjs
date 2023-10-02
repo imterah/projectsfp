@@ -30,6 +30,10 @@ const msgInitCallbacks = [
 export function main(config, db) {
   const wss = new WebSocketServer({ port: config.ports.udp });
 
+  wss.on("error", (e) => {
+    console.error("An error has occured in the main server code:", e);
+  });
+
   wss.on("connection", (ws) => {
     ws.ready = false;
     
@@ -102,6 +106,10 @@ export function setUpConn(activeID, port, config, db) {
     for (const conn of connsFound) {
       conn.recvFunc(msg, rinfo.address, rinfo.port);
     }
+  });
+
+  server.on("error", (e) => {
+    console.error("An error has occured in the main server code:", e);
   });
 
   msgInitCallbacks.push({

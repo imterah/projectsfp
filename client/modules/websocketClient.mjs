@@ -11,11 +11,22 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
   });
 
   if (!clientFound) throw new Error("Client not found");
-  const portsReq = await axios.get(clientFound.url + "/api/v1/ports");
+  let stupidBreakOutta;
+  const portsReq = await axios.get(clientFound.url + "/api/v1/ports").catch((e) => {
+    console.error("Failed to reach '%s'. Endpoint is down!", clientIPAddr);
+    stupidBreakOutta = true;
+  });
+
+  if (stupidBreakOutta) return;
+
   const portsRes = portsReq.data.ports;
 
   // FIXME: This will cause problems later. But currently later is not right now.
   const ws = new WebSocket(clientIPAddr.replace("http", "ws").replace(portsRes.http, portsRes.websocket));
+
+  ws.addEventListener("error", (e) => {
+    console.error("Error in WebSocket for '%s'. Cannot continue. New connections will be down, but all existing connections will likely be up.", clientIPAddr);
+  });
 
   ws.addEventListener("open", async() => {
     ws.isReady = false;
