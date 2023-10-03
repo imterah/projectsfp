@@ -28,6 +28,11 @@ console.log(`
 ProjectSFP - Easily forward ports over the network securely.
 You are running ProjectSFP Client, intended for forwarding ports to the server.`);
 
+process.on("uncaughtException", (e) => {
+  console.error("ERROR: Caught uncaught exception.", e);
+  console.error("Report this to https://github.com/greysoh/projectsfp");
+});
+
 const portForwardDB = Datastore.create("./ports.db");
 const clientDB = Datastore.create("./client.db");
 const usersDB = Datastore.create("./users.db");

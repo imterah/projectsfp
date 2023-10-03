@@ -23,6 +23,10 @@ const msgCallbacks = [
 export function main(config, db) {
   const wss = new WebSocketServer({ port: config.ports.tcp });
 
+  wss.on("error", (e) => {
+    console.error("An error has occured in the main server code:", e);
+  });
+
   wss.on("connection", (ws) => {
     ws.ready = false;
     
@@ -100,6 +104,11 @@ export function main(config, db) {
 
 export function setUpConn(activeID, externalConnectNotifcations, port, config, db) {
   const server = net.createServer();
+
+  server.on("error", (e) => {
+    console.error("An error has occured in the main server code:", e);
+  });
+
   server.on("connection", (socket) => {
     // We replay the messages when the "handshake" is complete
     socket.messageReplayCache = [];

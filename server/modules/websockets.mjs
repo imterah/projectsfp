@@ -1,7 +1,6 @@
-import { strict as assert } from "node:assert";
-
 import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
 import * as tcp from "../modules/tcp.mjs";
+import * as udp from "../modules/udp.mjs";
 
 import { WebSocketServer } from "ws";
 
@@ -40,15 +39,21 @@ export async function main(config, db) {
 
       switch (msgData.type) {
         case "listenNotifRequest": {
-          assert.equal(msgData.protocol, "TCP", "Unsupported protocol");
           console.log("Bringing up port '%s' for protocol '%s'", msgData.port, msgData.protocol);
+
+          if (msgData.protocol == "TCP") {
+            tcp.setUpConn(ws.keyData.refID, async(socketID) => ws.send(ws.encryption.encrypt(JSON.stringify({
+              type: "connection",
+              protocol: msgData.protocol,
+              socketID: socketID,
+              port: msgData.port
+            }), "text")), msgData.port, config, db);
+          } else if (msgData.protocol == "UDP") {
+            udp.setUpConn(ws.keyData.refID, msgData.port, config, db);
+          } else {
+            console.error("Unsupported protocol:", msgData.protocol);
+          }
           
-          tcp.setUpConn(ws.keyData.refID, async(socketID) => ws.send(ws.encryption.encrypt(JSON.stringify({
-            type: "connection",
-            protocol: msgData.protocol,
-            socketID: socketID,
-            port: msgData.port
-          }), "text")), msgData.port, config, db);
           break;
         }
       }

@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import * as ws from "./modules/websockets.mjs";
 import * as pair from "./routes/pair.mjs";
 import * as tcp from "./modules/tcp.mjs";
+import * as udp from "./modules/udp.mjs";
 
 import Datastore from "nedb-promises";
 import express from "express";
@@ -24,6 +25,11 @@ console.log(`
 
 ProjectSFP - Easily forward ports over the network securely.
 You are running ProjectSFP Server, intended to be the network forwarding the ports.\n`);
+
+process.on("uncaughtException", (e) => {
+  console.error("ERROR: Caught uncaught exception.", e);
+  console.error("Report this to https://github.com/greysoh/projectsfp");
+});
 
 const configRaw = await readFile("./config.json", "utf-8").catch(() => {
   throw new Error("Failed to read config file. Does it exist?");
@@ -52,3 +58,4 @@ app.get("/api/v1/ports", (req, res) => {
 app.listen(config.ports.http, () => console.log("HTTP Server listening on ::%s", config.ports.http));
 ws.main(config, db);
 tcp.main(config, db);
+udp.main(config, db);
