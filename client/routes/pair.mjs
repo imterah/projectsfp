@@ -1,4 +1,4 @@
-import { SymmEasyEncrypt, genPassword } from "../../server/libs/symmetricEnc.mjs";
+import { SymmEasyEncrypt, genPassword } from "../libs/symmetricEnc.mjs";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 import * as ws from "../modules/websocketClient.mjs";
 
