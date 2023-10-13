@@ -1,9 +1,8 @@
-import { SymmEasyEncrypt, genPassword } from "../libs/symmetricEnc.mjs";
+import { genPassword } from "../libs/symmetricEnc.mjs";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 import * as ws from "../modules/websocketClient.mjs";
 
 import express from "express";
-import openpgp from "openpgp";
 import axios from "axios";
 
 export function init(usersDB, clientDB, portForwardDB, sessionTokens) {

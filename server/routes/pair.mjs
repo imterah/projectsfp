@@ -1,4 +1,3 @@
-import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
 import { getRandomInt } from "../libs/getRandomInt.mjs";
 import { EasyEncrypt } from "../libs/encryption.mjs";
 
@@ -86,7 +85,7 @@ export function init(db, config) {
       req.ip
     );
 
-    const refID = getRandomInt(100000, 999999);
+    const refID = getRandomInt(0, 999999);
     const passwordDecrypted = await oneTimeDecryption.decrypt(req.body.encryptedPassword, "text");
 
     await db.insertOne({
