@@ -10,4 +10,5 @@ Both of these are Node.JS projects:
 2. If on the client, create the initial .env file, with the username and password set: `INIT_USERNAME=username` and `INIT_PASSWORD=password`
 3. If on the server, copy the base config file and edit it to your needs.
 4. Build the docker image: `docker build -t projectsfp .`
-5. Create the docker container: `docker create <args> projectsfp`. If you need `.env` for the client, add `--env-file=".env"`. If you want native networking (recommended for the server), add `--network="host"`. Else, add: `-p 8000:8000 -p 8080:8080`
+5. Create the docker volume: `docker volume create projectsfp-data`
+6. Create the docker container: `docker create --name projectsfp --mount source=projectsfp-data,target=/files/data <args> projectsfp`. If you need `.env` for the client, add `--env-file=".env"`. If you want native networking (recommended for the server), add `--network="host"`. Else, add: `-p 8000:8000`
