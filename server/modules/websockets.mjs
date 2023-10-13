@@ -25,8 +25,10 @@ export async function main(config, db) {
         if (!dbSearch) return ws.close();
         ws.keyData = dbSearch;
 
-        ws.encryption = new SymmEasyEncrypt(dbSearch.password, "text");
-        const decryptedChallenge = ws.encryption.decrypt(msgSplit[2], "text");
+        const encRounds = parseInt(msgSplit[2]);
+
+        ws.encryption = new SymmEasyEncrypt(dbSearch.password, "text", encRounds);
+        const decryptedChallenge = ws.encryption.decrypt(msgSplit[3], "text");
         if (decryptedChallenge != "CHALLENGE") return ws.close();
         
         ws.hasSpecifiedReason = true;

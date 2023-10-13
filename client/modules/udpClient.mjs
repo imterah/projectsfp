@@ -4,6 +4,7 @@ import { WebSocket } from "ws";
 
 import { Patter, encodeUDPWrappedPacket, decodeUDPWrappedPacket } from "../libs/portanat.mjs";
 import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
+import { getRounds } from "../libs/getRounds.mjs";
 
 const decoder = new TextDecoder();
 
@@ -19,11 +20,12 @@ export async function connectForward(refID, udpLocalIP, udpLocalPort, serverWSIP
 
   assert.ok(clientFound, "Somehow the client doesn't exist");
 
-  const encryption = new SymmEasyEncrypt(clientFound.password, "text");
+  const encRounds = await getRounds();
+  const encryption = new SymmEasyEncrypt(clientFound.password, "text", encRounds);
   const encryptedChallenge = encryption.encrypt("FRESH_UDP_CHALLENGER", "text");
 
   ws.on("open", () => {
-    ws.send(`EXPLAIN_UDP ${refID} ${serverPort} ${encryptedChallenge}`);
+    ws.send(`EXPLAIN_UDP ${refID} ${serverPort} ${encRounds} ${encryptedChallenge}`);
 
     ws.on("message", async(data) => {
       let justRecievedPraise = false;

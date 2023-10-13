@@ -5,6 +5,8 @@ import * as udp from "./udpClient.mjs";
 import { WebSocket } from "ws";
 import axios from "axios";
 
+import { getRounds } from "../libs/getRounds.mjs";
+
 export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, portForwardDB, sessionTokens) {
   const clientFound = await clientDB.findOne({
     refID: parseInt(clientID)
@@ -31,10 +33,12 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
   ws.addEventListener("open", async() => {
     ws.isReady = false;
 
-    ws.encryption = new SymmEasyEncrypt(clientFound.password, "text");
+    const encRounds = await getRounds();
+
+    ws.encryption = new SymmEasyEncrypt(clientFound.password, "text", encRounds);
     const encryptedChallenge = ws.encryption.encrypt("CHALLENGE", "text");
 
-    ws.send(`EXPLAIN ${clientID} ${encryptedChallenge}`);
+    ws.send(`EXPLAIN ${clientID} ${encRounds} ${encryptedChallenge}`);
     
     ws.addEventListener("message", async(msg) => {
       const decryptedMsg = ws.encryption.decrypt(msg.data, "text");

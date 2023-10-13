@@ -52,7 +52,8 @@ export function main(config, db) {
         if (!dbSearch) return ws.close();
         ws.keyData = dbSearch;
 
-        ws.encryption = new SymmEasyEncrypt(dbSearch.password, "text");
+        const encRounds = parseInt(msgSplit[3]);
+        ws.encryption = new SymmEasyEncrypt(dbSearch.password, "text", encRounds);
 
         // ...except we switch up the message to prevent some forms of replay attacks
 
@@ -60,7 +61,7 @@ export function main(config, db) {
         // then replays it. This only blocks that, currently. You could easily (probably even more so)
         // sniff the TCP challenge and replay it still. Probably skids who know more could replay the
         // TCP/IP data. So I guess FIXME?
-        const decryptedChallenge = ws.encryption.decrypt(msgSplit[3], "text");
+        const decryptedChallenge = ws.encryption.decrypt(msgSplit[4], "text");
         if (decryptedChallenge != "FRESH_UDP_CHALLENGER") return ws.close();
 
         ws.msgGenObject = {

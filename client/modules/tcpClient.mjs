@@ -2,7 +2,9 @@ import { strict as assert } from "node:assert";
 import { Socket } from "node:net";
 
 import { WebSocket } from "ws";
+
 import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
+import { getRounds } from "../libs/getRounds.mjs";
 
 const decoder = new TextDecoder();
 
@@ -22,11 +24,13 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
   const clientConnBuffer = [];
   const serverConnBuffer = [];
 
-  const encryption = new SymmEasyEncrypt(clientFound.password, "text");
+  const encRounds = await getRounds();
+
+  const encryption = new SymmEasyEncrypt(clientFound.password, "text", encRounds);
   const encryptedChallenge = encryption.encrypt("FRESH_TCP_CHALLENGER", "text");
   
   ws.on("open", () => {
-    ws.send(`EXPLAIN_TCP ${refID} ${serverSocketID} ${encryptedChallenge}`);
+    ws.send(`EXPLAIN_TCP ${refID} ${serverSocketID} ${encRounds} ${encryptedChallenge}`);
 
     ws.on("message", async(data) => {
       let justRecievedPraise = false;

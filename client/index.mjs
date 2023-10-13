@@ -1,5 +1,6 @@
 import { strict as assert } from "node:assert";
 import process from "node:process";
+import fs from "node:fs/promises";
 
 import { sha256 } from "./libs/sha256.mjs";
 
@@ -32,6 +33,14 @@ process.on("uncaughtException", (e) => {
   console.error("ERROR: Caught uncaught exception.", e);
   console.error("Report this to https://github.com/greysoh/projectsfp");
 });
+
+try {
+  await fs.readFile("./config.json");
+} catch (e) {
+  await fs.writeFile("./config.json", JSON.stringify({
+    rounds: 8192
+  }, null, 2));
+}
 
 const portForwardDB = Datastore.create("./ports.db");
 const clientDB = Datastore.create("./client.db");
