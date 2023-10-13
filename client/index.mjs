@@ -34,10 +34,12 @@ process.on("uncaughtException", (e) => {
   console.error("Report this to https://github.com/greysoh/projectsfp");
 });
 
+await fs.mkdir("./data/").catch(() => 0);
+
 try {
-  await fs.readFile("./config.json");
+  await fs.readFile("./data/config.json");
 } catch (e) {
-  await fs.writeFile("./config.json", JSON.stringify({
+  await fs.writeFile("./data/config.json", JSON.stringify({
     rounds: 8192
   }, null, 2));
 }

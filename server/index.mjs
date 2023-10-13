@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { readFile, mkdir } from "node:fs/promises";
 
 import * as ws from "./modules/websockets.mjs";
 import * as pair from "./routes/pair.mjs";
@@ -31,8 +31,9 @@ process.on("uncaughtException", (e) => {
   console.error("Report this to https://github.com/greysoh/projectsfp");
 });
 
-const configRaw = await readFile("./config.json", "utf-8").catch(() => {
-  throw new Error("Failed to read config file. Does it exist?");
+await mkdir("./data/").catch(() => 0);
+const configRaw = await readFile("./data/config.json", "utf-8").catch(() => {
+  throw new Error("Failed to read config file. Does it exist in the ./data/ directory (or volume)?");
 });
 
 const config = JSON.parse(configRaw);
