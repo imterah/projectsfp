@@ -8,7 +8,7 @@ import * as udp from "./modules/udp.mjs";
 import Datastore from "nedb-promises";
 import express from "express";
 
-const db = Datastore.create("./client.db");
+const db = Datastore.create("./data/client.db");
 
 console.log(`
  /$$$$$$$                                               /$$      /$$$$$$  /$$$$$$$$ /$$$$$$$ 

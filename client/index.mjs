@@ -42,9 +42,9 @@ try {
   }, null, 2));
 }
 
-const portForwardDB = Datastore.create("./ports.db");
-const clientDB = Datastore.create("./client.db");
-const usersDB = Datastore.create("./users.db");
+const portForwardDB = Datastore.create("./data/ports.db");
+const clientDB = Datastore.create("./data/client.db");
+const usersDB = Datastore.create("./data/users.db");
 
 const sessionTokens = [
   {
