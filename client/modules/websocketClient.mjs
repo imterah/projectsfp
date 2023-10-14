@@ -14,13 +14,11 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
   });
 
   if (!clientFound) throw new Error("Client not found");
-  let stupidBreakOutta;
   const portsReq = await axios.get(clientFound.url + "/api/v1/ports").catch((e) => {
     console.error("Failed to reach '%s'. Endpoint is down!", clientIPAddr);
-    stupidBreakOutta = true;
   });
 
-  if (stupidBreakOutta) return;
+  if (!portsReq) return;
 
   const portsRes = portsReq.data.ports;
 
@@ -28,25 +26,26 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
   const ws = new WebSocket(clientIPAddr.replace("http", "ws").replace(portsRes.http, portsRes.websocket));
   const connectionID = getRandomInt(0, 65535); // Used for IP tracking via dashboard
 
-  ws.addEventListener("error", (e) => {
+  ws.on("error", (e) => {
     console.error("Error in WebSocket for '%s'. Cannot continue. New connections will be down, but all existing connections will likely be up.", clientIPAddr);
   });
 
   const encRounds = await getRounds();
 
-  ws.addEventListener("open", async() => {
+  ws.on("open", async() => {
     ws.isReady = false;
     ws.encryption = new SymmEasyEncrypt(clientFound.password, "text", encRounds);
 
-    ws.addEventListener("message", async(msg) => {
-      if (msg.data.startsWith("ENC_CHALLENGE")) { 
-        const challenge = msg.data.split(" ")[1];
+    ws.on("message", async(msg) => {
+      console.log(msg);
+      if (msg.toString().startsWith("ENC_CHALLENGE")) { 
+        const challenge = msg.toString().split(" ")[1];
         const encryptedChallenge = ws.encryption.encrypt(challenge, "text");
   
         return ws.send(`EXPLAIN ${clientID} ${encRounds} ${encryptedChallenge}`);
       }
 
-      const decryptedMsg = ws.encryption.decrypt(msg.data, "text");
+      const decryptedMsg = ws.encryption.decrypt(msg);
       const msgString = decryptedMsg.toString();
 
       if (msgString == "SUCCESS") {
@@ -65,7 +64,7 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
             type: "listenNotifRequest",
             port: port.destPort,
             protocol: port.protocol
-          }), "text"));
+          })));
 
           if (port.protocol == "UDP") {
             // Give the server some time for it to play catch up with our request, and to start up the port

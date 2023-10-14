@@ -16,9 +16,9 @@ export async function main(config, db) {
     ws.encryptionChallenge = getRandomInt(0, 65535);
     ws.send("ENC_CHALLENGE " + ws.encryptionChallenge);
     
-    ws.addEventListener("message", async(msg) => {
+    ws.on("message", async(msg) => {
       if (!ws.hasSpecifiedReason) {
-        const msgString = msg.data;
+        const msgString = msg.toString();
         if (!msgString.startsWith("EXPLAIN ")) return ws.close();
 
         const msgSplit = msgString.split(" ");
@@ -36,11 +36,11 @@ export async function main(config, db) {
         if (decryptedChallenge != ws.encryptionChallenge) return ws.close();
         
         ws.hasSpecifiedReason = true;
-        ws.send(ws.encryption.encrypt("SUCCESS", "text"));
+        ws.send(ws.encryption.encrypt("SUCCESS"));
         return;
       }
 
-      const decryptedMessage = ws.encryption.decrypt(msg.data, "text");
+      const decryptedMessage = ws.encryption.decrypt(msg);
       const msgData = JSON.parse(decryptedMessage);
 
       switch (msgData.type) {
@@ -54,7 +54,7 @@ export async function main(config, db) {
               socketID: socketID,
               port: msgData.port,
               ip: ip
-            }), "text")), msgData.port, config, db);
+            }))), msgData.port, config, db);
           } else if (msgData.protocol == "UDP") {
             udp.setUpConn(ws.keyData.refID, msgData.port, config, db);
           } else {
