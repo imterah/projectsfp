@@ -17,9 +17,17 @@ async function listOpenConnections() {
     token
   });
 
-  console.log("connType serverIP serverPort clientIP clientPort");
+  console.log("----- Open Connections -----\nconnType serverIP serverPort clientIP clientPort");
   for (const entry of connList.data.openConnections) {
     console.log(entry.type, entry.serverIP, entry.serverPort, entry.clientIP, entry.clientPort);
+  }
+
+  if (connList.data.sessionList) {
+    console.log("\n\n----- Sessions -----");
+    console.log("username ip");
+    for (const session of connList.data.sessionList) {
+      console.log(session.username, session.ip);
+    }
   }
 }
 
