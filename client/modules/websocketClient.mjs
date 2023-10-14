@@ -1,4 +1,4 @@
-import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
+import { SymmEasyEncrypt, genPassword } from "../libs/symmetricEnc.mjs";
 import * as tcp from "./tcpClient.mjs";
 import * as udp from "./udpClient.mjs";
 
@@ -37,7 +37,6 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
     ws.encryption = new SymmEasyEncrypt(clientFound.password, "text", encRounds);
 
     ws.on("message", async(msg) => {
-      console.log(msg);
       if (msg.toString().startsWith("ENC_CHALLENGE")) { 
         const challenge = msg.toString().split(" ")[1];
         const encryptedChallenge = ws.encryption.encrypt(challenge, "text");
@@ -57,6 +56,19 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
           clientIP: null,
           clientPort: null
         });
+
+        const newPassword = genPassword().toString("base64");
+        const entry = clientFound;
+        entry.password = newPassword;
+
+        await clientDB.updateOne({
+          refID: parseInt(clientID)
+        }, entry);
+        
+        ws.send(ws.encryption.encrypt(JSON.stringify({
+          type: "passwordChange",
+          password: newPassword
+        })));
         
         // Start sending our garbage
         for (const port of ports) {

@@ -44,6 +44,22 @@ export async function main(config, db) {
       const msgData = JSON.parse(decryptedMessage);
 
       switch (msgData.type) {
+        default: {
+          break;
+        }
+
+        case "passwordChange": {
+          console.log("Changing password on id '%s'", ws.keyData.refID);
+          const entry = ws.keyData;
+          entry.password = msgData.password;
+          
+          await db.updateOne({
+            refID: ws.keyData.refID
+          }, entry);
+
+          break;
+        }
+
         case "listenNotifRequest": {
           console.log("Bringing up port '%s' for protocol '%s'", msgData.port, msgData.protocol);
 
