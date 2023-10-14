@@ -108,17 +108,17 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
   });
 
   socketClient.on("close", () => {
-    if (ws.CLOSED) return;
-    delete openConnections[openConnections.indexOf(openConnections.find((i) => i.id == connectionID))];
-
-    ws.close();
+    const openConnElement = openConnections.find((i) => i.id == connectionID);
+    if (openConnElement) openConnections.splice(openConnections.indexOf(openConnElement), 1);
+    
+    if (!ws.CLOSED) ws.close();
   });
 
   ws.on("close", () => {
-    if (socketClient.closed) return;
-    delete openConnections[openConnections.indexOf(openConnections.find((i) => i.id == connectionID))];
+    const openConnElement = openConnections.find((i) => i.id == connectionID);
+    if (openConnElement) openConnections.splice(openConnections.indexOf(openConnElement), 1);
     
-    socketClient.end();
+    if (!socketClient.closed) socketClient.end();
   });
 
   socketClient.connect(tcpLocalPort, tcpLocalIP);
