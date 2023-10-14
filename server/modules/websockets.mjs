@@ -49,7 +49,6 @@ export async function main(config, db) {
         }
 
         case "passwordChange": {
-          console.log("Changing password on id '%s'", ws.keyData.refID);
           const entry = ws.keyData;
           entry.password = msgData.password;
           
