@@ -6,6 +6,7 @@ import { sha256 } from "./libs/sha256.mjs";
 
 import * as ws from "./modules/websocketClient.mjs";
 
+import * as spy from "./routes/connectionSpy.mjs";
 import * as add from "./routes/addForward.mjs";
 import * as login from "./routes/login.mjs";
 import * as pair from "./routes/pair.mjs";
@@ -56,9 +57,12 @@ const sessionTokens = [
   }
 ]
 
+const openConnections = [];
+
 const app = express();
 app.use(express.json());
 
+app.use(spy.init(usersDB, clientDB, portForwardDB, sessionTokens, openConnections));
 app.use(login.init(usersDB, clientDB, portForwardDB, sessionTokens));
 app.use(pair.init(usersDB, clientDB, portForwardDB, sessionTokens));
 app.use(add.init(usersDB, clientDB, portForwardDB, sessionTokens));
@@ -117,7 +121,7 @@ for (const poolPartyItemKey of Object.keys(portPoolPartyGen)) {
   });
 
   if (assert.ok(serverToConnectToData, "Your computer is honestly cursed. [Could not find DB entry for pool refID]")) break;
-  ws.main(serverToConnectToData.url, poolPartyItemKey, totalPortsToForward, usersDB, clientDB, portForwardDB, sessionTokens);
+  ws.main(serverToConnectToData.url, poolPartyItemKey, totalPortsToForward, usersDB, clientDB, portForwardDB, sessionTokens, openConnections);
 }
 
 app.listen(8000, () => console.log("Listening on ::8000"));

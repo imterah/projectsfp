@@ -128,7 +128,7 @@ export function setUpConn(activeID, externalConnectNotifcations, port, config, d
     socket.msgGenObject = msgGenObject;
     msgCallbacks.push(msgGenObject);
 
-    externalConnectNotifcations(socket.id, port); // The server shouldn't need a port, but just in case they want a reminder, here it is.
+    externalConnectNotifcations(socket.id, port, socket.remoteAddress); // The server shouldn't need a port, but just in case they want a reminder, here it is.
 
     async function doReadyRepeatDaemon() {
       if (msgGenObject.isServerReady) {

@@ -5,9 +5,10 @@ import * as udp from "./udpClient.mjs";
 import { WebSocket } from "ws";
 import axios from "axios";
 
+import { getRandomInt } from "../libs/getRandomInt.mjs";
 import { getRounds } from "../libs/getRounds.mjs";
 
-export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, portForwardDB, sessionTokens) {
+export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, portForwardDB, sessionTokens, openConnections = []) {
   const clientFound = await clientDB.findOne({
     refID: parseInt(clientID)
   });
@@ -25,6 +26,7 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
 
   // FIXME: This will cause problems later. But currently later is not right now.
   const ws = new WebSocket(clientIPAddr.replace("http", "ws").replace(portsRes.http, portsRes.websocket));
+  const connectionID = getRandomInt(0, 65535); // Used for IP tracking via dashboard
 
   ws.addEventListener("error", (e) => {
     console.error("Error in WebSocket for '%s'. Cannot continue. New connections will be down, but all existing connections will likely be up.", clientIPAddr);
@@ -45,6 +47,15 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
       const msgString = decryptedMsg.toString();
 
       if (msgString == "SUCCESS") {
+        openConnections.push({
+          type: "LDN", // London bridge [is falling down]
+          id: connectionID,
+          serverIP: clientIPAddr,
+          serverPort: null,
+          clientIP: null,
+          clientPort: null
+        });
+        
         // Start sending our garbage
         for (const port of ports) {
           ws.send(ws.encryption.encrypt(JSON.stringify({
@@ -74,6 +85,16 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
                 refID: parseInt(clientID)
               });
 
+              const connectionID = getRandomInt(0, 65535);
+              openConnections.push({
+                type: "TCP",
+                id: connectionID,
+                serverIP: clientIPAddr,
+                serverPort: msg.port,
+                clientIP: msg.ip,
+                clientPort: msg.port
+              });
+
               if (!msgConnect) {
                 // Then query generic after that
                 msgConnect = await portForwardDB.findOne({
@@ -89,7 +110,7 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
               const url = new URL(clientIPAddr);
               const ip = url.host;
 
-              tcp.connectForward(parseInt(clientID), msgConnect.sourcePort, msgConnect.ip, msg.socketID, ip.split(":")[0], portsRes.tcp, clientDB);
+              tcp.connectForward(parseInt(clientID), msgConnect.sourcePort, msgConnect.ip, msg.socketID, ip.split(":")[0], portsRes.tcp, clientDB, openConnections, connectionID);
             } else if (msg.protocol == "UDP") return console.error("Not implemented [UDP]");
           }
         }
