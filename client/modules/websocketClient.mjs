@@ -32,17 +32,20 @@ export async function main(clientIPAddr, clientID, ports, usersDB, clientDB, por
     console.error("Error in WebSocket for '%s'. Cannot continue. New connections will be down, but all existing connections will likely be up.", clientIPAddr);
   });
 
+  const encRounds = await getRounds();
+
   ws.addEventListener("open", async() => {
     ws.isReady = false;
-
-    const encRounds = await getRounds();
-
     ws.encryption = new SymmEasyEncrypt(clientFound.password, "text", encRounds);
-    const encryptedChallenge = ws.encryption.encrypt("CHALLENGE", "text");
 
-    ws.send(`EXPLAIN ${clientID} ${encRounds} ${encryptedChallenge}`);
-    
     ws.addEventListener("message", async(msg) => {
+      if (msg.data.startsWith("ENC_CHALLENGE")) { 
+        const challenge = msg.data.split(" ")[1];
+        const encryptedChallenge = ws.encryption.encrypt(challenge, "text");
+  
+        return ws.send(`EXPLAIN ${clientID} ${encRounds} ${encryptedChallenge}`);
+      }
+
       const decryptedMsg = ws.encryption.decrypt(msg.data, "text");
       const msgString = decryptedMsg.toString();
 

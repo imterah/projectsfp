@@ -25,15 +25,18 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
   const serverConnBuffer = [];
 
   const encRounds = await getRounds();
-
   const encryption = new SymmEasyEncrypt(clientFound.password, "text", encRounds);
-  const encryptedChallenge = encryption.encrypt("FRESH_TCP_CHALLENGER", "text");
   
   ws.on("open", () => {
-    ws.send(`EXPLAIN_TCP ${refID} ${serverSocketID} ${encRounds} ${encryptedChallenge}`);
-
     ws.on("message", async(data) => {
       let justRecievedPraise = false;
+      if (data.toString().startsWith("ENC_CHALLENGE") && !isServerConnReady) {
+        const challenge = data.toString().split(" ")[1];
+        const encryptedChallenge = encryption.encrypt(challenge, "text");
+
+        return ws.send(`EXPLAIN_TCP ${refID} ${serverSocketID} ${encRounds} ${encryptedChallenge}`);
+      }
+
       const dataDecrypted = encryption.decrypt(data);
 
       if (!isServerConnReady) {

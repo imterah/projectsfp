@@ -1,3 +1,4 @@
+import { getRandomInt } from "../libs/getRandomInt.mjs";
 import { SymmEasyEncrypt } from "../libs/symmetricEnc.mjs";
 import * as tcp from "../modules/tcp.mjs";
 import * as udp from "../modules/udp.mjs";
@@ -12,6 +13,9 @@ export async function main(config, db) {
   console.log("WebSocket Server listening on ::" + config.ports.websocket); 
 
   wss.on("connection", async(ws) => {
+    ws.encryptionChallenge = getRandomInt(0, 65535);
+    ws.send("ENC_CHALLENGE " + ws.encryptionChallenge);
+    
     ws.addEventListener("message", async(msg) => {
       if (!ws.hasSpecifiedReason) {
         const msgString = msg.data;
@@ -29,7 +33,7 @@ export async function main(config, db) {
 
         ws.encryption = new SymmEasyEncrypt(dbSearch.password, "text", encRounds);
         const decryptedChallenge = ws.encryption.decrypt(msgSplit[3], "text");
-        if (decryptedChallenge != "CHALLENGE") return ws.close();
+        if (decryptedChallenge != ws.encryptionChallenge) return ws.close();
         
         ws.hasSpecifiedReason = true;
         ws.send(ws.encryption.encrypt("SUCCESS", "text"));

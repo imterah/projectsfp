@@ -24,12 +24,16 @@ export async function connectForward(refID, udpLocalIP, udpLocalPort, serverWSIP
 
   const encRounds = await getRounds();
   const encryption = new SymmEasyEncrypt(clientFound.password, "text", encRounds);
-  const encryptedChallenge = encryption.encrypt("FRESH_UDP_CHALLENGER", "text");
 
   ws.on("open", () => {
-    ws.send(`EXPLAIN_UDP ${refID} ${serverPort} ${encRounds} ${encryptedChallenge}`);
-
     ws.on("message", async(data) => {
+      if (data.toString().startsWith("ENC_CHALLENGE") && !isServerConnReady) {
+        const challenge = data.toString().split(" ")[1];
+        const encryptedChallenge = encryption.encrypt(challenge, "text");
+  
+        return ws.send(`EXPLAIN_UDP ${refID} ${serverPort} ${encRounds} ${encryptedChallenge}`);
+      }
+      
       let justRecievedPraise = false;
       const dataDecrypted = encryption.decrypt(data);
       const uint8Array = new Uint8Array(dataDecrypted.buffer, dataDecrypted.byteOffset, dataDecrypted.length);

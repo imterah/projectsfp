@@ -29,6 +29,8 @@ export function main(config, db) {
 
   wss.on("connection", (ws) => {
     ws.ready = false;
+    ws.encryptionChallenge = getRandomInt(0, 65535);
+    ws.send("ENC_CHALLENGE " + ws.encryptionChallenge);
     
     ws.on("message", async(data) => {
       if (!ws.ready) { // Yes, I know I have a better method of doing this.
@@ -51,22 +53,8 @@ export function main(config, db) {
         const encRounds = parseInt(msgSplit[3]);
         ws.encryption = new SymmEasyEncrypt(dbSearch.password, "text", encRounds);
 
-        // ...except we switch up the message to prevent some forms of replay attacks
-
-        // This blocks only very high level skid stuff where they sniff unencrypted WebSocket traffic,
-        // then replays it. This only blocks that, currently. You could easily (probably even more so)
-        // sniff the TCP challenge and replay it still. Probably skids who know more could replay the
-        // TCP/IP data. So I guess FIXME?
         const decryptedChallenge = ws.encryption.decrypt(msgSplit[4], "text");
-        if (decryptedChallenge == "CHALLENGE") {
-          console.log("Whoops? Caught potential replay attack for IP:", ws._socket.remoteAddress);
-          console.log("Check failed: decryptedChallenge = 'CHALLENGE' // challenge used for WS auth");
-
-          ws.send("NAHHH mf just prank called the server :skull:");
-          return ws.close();
-        }
-
-        if (decryptedChallenge != "FRESH_TCP_CHALLENGER") return ws.close();
+        if (decryptedChallenge != ws.encryptionChallenge) return ws.close();
         
         // Update the send method to auto encrypt
         ws.msgGenObject.onServerClosure = () => ws.close();
