@@ -8,9 +8,9 @@ import { getRounds } from "../libs/getRounds.mjs";
 
 const decoder = new TextDecoder();
 
-export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSocketID, serverIP, serverPort, clientDB) {
+export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSocketID, serverIP, serverPort, clientDB, openConnections = [], connectionID) {
   const socketClient = new Socket();
-  const ws = new WebSocket(`ws://${serverIP}:${serverPort}`);
+  const ws = new WebSocket(`ws://${serverIP}:${serverPort}`); 
 
   const clientFound = await clientDB.findOne({
     refID
@@ -108,13 +108,17 @@ export async function connectForward(refID, tcpLocalPort, tcpLocalIP, serverSock
   });
 
   socketClient.on("close", () => {
-    if (ws.CLOSED) return;
-    ws.close();
+    const openConnElement = openConnections.find((i) => i.id == connectionID);
+    if (openConnElement) openConnections.splice(openConnections.indexOf(openConnElement), 1);
+    
+    if (!ws.CLOSED) ws.close();
   });
 
   ws.on("close", () => {
-    if (socketClient.closed) return;
-    socketClient.end();
+    const openConnElement = openConnections.find((i) => i.id == connectionID);
+    if (openConnElement) openConnections.splice(openConnections.indexOf(openConnElement), 1);
+    
+    if (!socketClient.closed) socketClient.end();
   });
 
   socketClient.connect(tcpLocalPort, tcpLocalIP);

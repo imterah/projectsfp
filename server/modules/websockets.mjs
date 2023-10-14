@@ -44,11 +44,12 @@ export async function main(config, db) {
           console.log("Bringing up port '%s' for protocol '%s'", msgData.port, msgData.protocol);
 
           if (msgData.protocol == "TCP") {
-            tcp.setUpConn(ws.keyData.refID, async(socketID) => ws.send(ws.encryption.encrypt(JSON.stringify({
+            tcp.setUpConn(ws.keyData.refID, async(socketID, port, ip) => ws.send(ws.encryption.encrypt(JSON.stringify({
               type: "connection",
               protocol: msgData.protocol,
               socketID: socketID,
-              port: msgData.port
+              port: msgData.port,
+              ip: ip
             }), "text")), msgData.port, config, db);
           } else if (msgData.protocol == "UDP") {
             udp.setUpConn(ws.keyData.refID, msgData.port, config, db);

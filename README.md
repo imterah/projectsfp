@@ -2,9 +2,9 @@
 ## Simple Forward Port
 Simple Forward Port lets you effectively do port forwarding across multiple networks.
 ## Folder Structure
-Both of these are Node.JS projects:  
-  - `client`: This is the UI. It's role is to send the traffic to the server when requested.
-  - `server`: This informs the `client` on when connections are happening, and to facilitate connections itself.
+  - `client [nodejs]`: This is the management system. It's role is to send the traffic to the server when requested.
+  - `server [nodejs]`: This informs the `client` on when connections are happening, and to facilitate connections itself.
+  - `app [deno]`: This is the desktop app written in Deno.JS
 ## Docker installation
 1. Go into one of the projects directories.
 2. If on the client, create the initial .env file, with the username and password set: `INIT_USERNAME=username` and `INIT_PASSWORD=password`
